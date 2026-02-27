@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextField, InputAdornment, Box } from '@mui/material';
-import SearchIcon from '@mui/material/Icon/Icon';
+import SearchIcon from '@mui/icons-material/Search';
 
 const SearchFilter = ({ searchTerm, onSearchChange, placeholder = "Search..." }) => {
     return (

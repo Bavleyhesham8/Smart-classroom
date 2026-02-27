@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Container, Box, Typography, TextField, Button, Paper, Alert, Link } from '@mui/material';
-import LockOutlinedIcon from '@mui/material/Icon/Icon';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Avatar from '@mui/material/Avatar';
 
 const Login = () => {
