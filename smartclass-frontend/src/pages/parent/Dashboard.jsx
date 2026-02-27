@@ -41,17 +41,6 @@ const ParentDashboard = () => {
         return null;
     };
 
-    // Prepare Line Chart Data (Last 7 days of mock data)
-    const lineData = Array.from({ length: 7 }).map((_, i) => {
-        const d = subDays(new Date(), 6 - i);
-        const dateStr = format(d, 'yyyy-MM-dd');
-        const record = student.engagement?.find(e => e.date === dateStr);
-        return {
-            date: format(d, 'MMM dd'),
-            level: record ? record.level : Math.floor(Math.random() * 40) + 40 // mock fallback data
-        };
-    });
-
     // Mock Notifications
     const notifications = [
         { id: 1, date: format(new Date(), 'yyyy-MM-dd'), message: `New attendance record for ${student.name}.`, severity: 'info' },

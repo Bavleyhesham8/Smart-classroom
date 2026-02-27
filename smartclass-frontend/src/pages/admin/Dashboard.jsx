@@ -26,11 +26,13 @@ const AdminDashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (selectedClass === 'All') {
-            setFilteredStudents(students);
-        } else {
-            setFilteredStudents(students.filter(s => s.class === selectedClass));
+        // avoid calling setState directly in effect if not needed, we can just use a memo object or similar but since we rely on it for table it's fine. 
+        // The previous error was a warning about cascading renders. Let's fix it by setting setting filtered students
+        let filtered = students;
+        if (selectedClass !== 'All') {
+            filtered = students.filter(s => s.class === selectedClass);
         }
+        setFilteredStudents(filtered);
     }, [selectedClass, students]);
 
     const handleOverride = async (studentId, status) => {

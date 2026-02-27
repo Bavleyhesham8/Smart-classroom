@@ -7,7 +7,6 @@ import { AccountCircle, Menu as MenuIcon } from '@mui/material';
 const ParentLayout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
     const [anchorElNav, setAnchorElNav] = useState(null);
     const [anchorElUser, setAnchorElUser] = useState(null);
 
