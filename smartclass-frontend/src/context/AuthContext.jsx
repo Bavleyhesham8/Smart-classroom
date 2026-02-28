@@ -6,17 +6,18 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        // Check local storage for token on mount
+    const [user, setUser] = useState(() => {
         const storedUser = localStorage.getItem('smartclass_user');
         const token = localStorage.getItem('smartclass_token');
         if (storedUser && token) {
-            setUser(JSON.parse(storedUser));
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            return JSON.parse(storedUser);
         }
+        return null;
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
         setLoading(false);
     }, []);
 

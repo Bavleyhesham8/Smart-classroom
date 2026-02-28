@@ -1,90 +1,128 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, IconButton, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
-import { Menu as MenuIcon, Dashboard as DashboardIcon, SupervisorAccount as AdminIcon, Settings as SettingsIcon, AccountCircle } from '@mui/icons-material';
+import { Menu, LayoutDashboard, ShieldCheck, UserCircle, LogOut } from 'lucide-react';
+import { cn } from '../lib/utils';
 
-const drawerWidth = 240;
+const menuItems = [
+    { text: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin/dashboard' },
+];
+
+const SidebarContent = ({ location, setMobileOpen, handleLogout, navigate }) => (
+    <div className="flex flex-col h-full bg-slate-900 text-slate-300">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 py-2">
+            <span className="text-xl font-bold flex items-center text-white tracking-tight">
+                <ShieldCheck className="mr-2 text-teal-500" size={24} />
+                Admin
+            </span>
+        </div>
+        <nav className="flex-1 py-4 space-y-1 px-3">
+            {menuItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                    <button
+                        key={item.text}
+                        onClick={() => {
+                            navigate(item.path);
+                            setMobileOpen(false);
+                        }}
+                        className={cn(
+                            "flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200",
+                            isActive
+                                ? "bg-teal-600/10 text-teal-400"
+                                : "hover:bg-slate-800 hover:text-white"
+                        )}
+                    >
+                        <span className="mr-3">{item.icon}</span>
+                        {item.text}
+                    </button>
+                );
+            })}
+        </nav>
+        <div className="p-4 border-t border-slate-800">
+            <button
+                onClick={handleLogout}
+                className="flex items-center w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+                <LogOut size={20} className="mr-3" />
+                Logout
+            </button>
+        </div>
+    </div>
+);
 
 const AdminLayout = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [anchorEl, setAnchorEl] = useState(null);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
 
-    const menuItems = [
-        { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin/dashboard' },
-    ];
-
-    const handleMenu = (event) => setAnchorEl(event.currentTarget);
-    const handleClose = () => setAnchorEl(null);
-
     const handleLogout = () => {
-        handleClose();
         logout();
         navigate('/login');
     };
 
-    const drawer = (
-        <div>
-            <Toolbar>
-                <Typography variant="h6" noWrap component="div" sx={{ color: 'secondary.main', fontWeight: 'bold' }}>
-                    SmartClass Admin
-                </Typography>
-            </Toolbar>
-            <Divider />
-            <List>
-                {menuItems.map((item) => (
-                    <ListItem key={item.text} disablePadding>
-                        <ListItemButton selected={location.pathname === item.path} onClick={() => navigate(item.path)}>
-                            <ListItemIcon>{item.icon}</ListItemIcon>
-                            <ListItemText primary={item.text} />
-                        </ListItemButton>
-                    </ListItem>
-                ))}
-            </List>
-        </div>
-    );
-
     return (
-        <Box sx={{ display: 'flex' }}>
-            <AppBar position="fixed" sx={{ width: { sm: `calc(100% - ${drawerWidth}px)` }, ml: { sm: `${drawerWidth}px` }, bgcolor: 'secondary.main' }}>
-                <Toolbar>
-                    <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={handleDrawerToggle} sx={{ mr: 2, display: { sm: 'none' } }}>
-                        <MenuIcon />
-                    </IconButton>
-                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-                        Admin Portal
-                    </Typography>
-                    <div>
-                        <Typography variant="body1" component="span" sx={{ mr: 2, display: { xs: 'none', sm: 'inline' } }}>{user?.name}</Typography>
-                        <IconButton size="large" aria-label="account of current user" aria-controls="menu-appbar" aria-haspopup="true" onClick={handleMenu} color="inherit">
-                            <AccountCircle />
-                        </IconButton>
-                        <Menu id="menu-appbar" anchorEl={anchorEl} anchorOrigin={{ vertical: 'top', horizontal: 'right' }} keepMounted transformOrigin={{ vertical: 'top', horizontal: 'right' }} open={Boolean(anchorEl)} onClose={handleClose}>
-                            <MenuItem onClick={handleLogout}>Logout</MenuItem>
-                        </Menu>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans">
+            {/* Mobile Sidebar Overlay */}
+            {mobileOpen && (
+                <div
+                    className="fixed inset-0 z-40 bg-slate-900/80 backdrop-blur-sm lg:hidden"
+                    onClick={handleDrawerToggle}
+                />
+            )}
+
+            {/* Sidebar Desktop & Mobile */}
+            <aside
+                className={cn(
+                    "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0",
+                    mobileOpen ? "translate-x-0" : "-translate-x-full"
+                )}
+            >
+                <SidebarContent
+                    location={location}
+                    setMobileOpen={setMobileOpen}
+                    handleLogout={handleLogout}
+                    navigate={navigate}
+                />
+            </aside>
+
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Top Navbar */}
+                <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10 sticky top-0">
+                    <div className="flex items-center">
+                        <button
+                            onClick={handleDrawerToggle}
+                            className="lg:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 focus:outline-none mr-4"
+                        >
+                            <Menu size={24} />
+                        </button>
+                        <h1 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
+                            Command Center
+                        </h1>
                     </div>
-                </Toolbar>
-            </AppBar>
-            <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
-                <Drawer variant="temporary" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }}>
-                    {drawer}
-                </Drawer>
-                <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }} open>
-                    {drawer}
-                </Drawer>
-            </Box>
-            <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}>
-                <Toolbar />
-                <Outlet />
-            </Box>
-        </Box>
+
+                    <div className="flex items-center space-x-4">
+                        <div className="hidden sm:flex items-center text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {user?.name || "Administrator"}
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300">
+                            <UserCircle size={20} />
+                        </div>
+                    </div>
+                </header>
+
+                {/* Page Content */}
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+                    <Outlet />
+                </main>
+            </div>
+        </div>
     );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Box, Typography, Grid, Paper, Button } from '@mui/material';
+import { format } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import StudentTable from '../../components/StudentTable';
 import AttendancePieChart from '../../components/AttendancePieChart';
@@ -11,7 +11,7 @@ import { simulateRealtime } from '../../utils/mockRealtime';
 
 const TeacherDashboard = () => {
     const [students, setStudents] = useState([]);
-    const [filteredStudents, setFilteredStudents] = useState([]);
+    // const [filteredStudents, setFilteredStudents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDate] = useState(format(new Date(), 'yyyy-MM-dd')); // default today
 
@@ -37,13 +37,10 @@ const TeacherDashboard = () => {
         return () => clearInterval(interval);
     }, [students, selectedDate]);
 
-    useEffect(() => {
-        const lowercasedFilter = searchTerm.toLowerCase();
-        const filteredData = students.filter(item =>
-            item.name.toLowerCase().includes(lowercasedFilter)
-        );
-        setFilteredStudents(filteredData);
-    }, [searchTerm, students]);
+    const lowercasedFilter = searchTerm.toLowerCase();
+    const filteredStudents = students.filter(item =>
+        item.name.toLowerCase().includes(lowercasedFilter)
+    );
 
     const handleOverride = async (studentId, status) => {
         try {
