@@ -29,6 +29,19 @@ const ParentDashboard = () => {
 
     if (!student) return <Typography>Loading child data...</Typography>;
 
+    // Prepare Line Chart Data (Last 7 days of mock data)
+    const lineData = Array.from({ length: 7 }).map((_, i) => {
+        const d = subDays(new Date(), 6 - i);
+        const dateStr = format(d, 'yyyy-MM-dd');
+        const record = student.engagement?.find(e => e.date === dateStr);
+        // Using a pseudo-random value based on the date so it doesn't change on re-render
+        const fallbackLevel = 40 + (d.getDate() % 40);
+        return {
+            date: format(d, 'MMM dd'),
+            level: record ? record.level : fallbackLevel
+        };
+    });
+
     // Prepare Calendar Data
     const getTileClassName = ({ date, view }) => {
         if (view === 'month') {

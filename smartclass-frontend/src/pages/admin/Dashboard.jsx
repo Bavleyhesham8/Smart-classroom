@@ -9,6 +9,7 @@ const AdminDashboard = () => {
     const [filteredStudents, setFilteredStudents] = useState([]);
     const [selectedClass, setSelectedClass] = useState('All');
     const [cvEnabled, setCvEnabled] = useState(true);
+    const [engagementEnabled, setEngagementEnabled] = useState(true);
     const [selectedDate] = useState(format(new Date(), 'yyyy-MM-dd')); // default today
 
     const classes = ['All', 'Math 101', 'Physics 202', 'History 301'];
@@ -75,8 +76,13 @@ const AdminDashboard = () => {
                             label="CV Face Detection"
                             sx={{ display: 'block', mb: 1 }}
                         />
+                        <FormControlLabel
+                            control={<Switch checked={engagementEnabled} onChange={(e) => setEngagementEnabled(e.target.checked)} color="secondary" />}
+                            label="Engagement Tracking"
+                            sx={{ display: 'block', mb: 1 }}
+                        />
                         <Typography variant="body2" color="text.secondary">
-                            Toggle the computer vision backend processing.
+                            Toggle the computer vision backend processing features.
                         </Typography>
                     </Paper>
                 </Grid>
