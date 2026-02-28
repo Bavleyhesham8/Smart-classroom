@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
 
+/* eslint-disable react-refresh/only-export-components */
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -11,15 +12,16 @@ export const AuthProvider = ({ children }) => {
         const token = localStorage.getItem('smartclass_token');
         if (storedUser && token) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            return JSON.parse(storedUser);
+            try {
+                return JSON.parse(storedUser);
+            } catch (e) {
+                console.error("Failed to parse stored user", e);
+                return null;
+            }
         }
         return null;
     });
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        setLoading(false);
-    }, []);
+    const [loading] = useState(false);
 
     const login = async (email, password) => {
         try {
