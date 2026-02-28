@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { AppBar, Box, Toolbar, IconButton, Typography, Menu, MenuItem, Button, Container } from '@mui/material';
-import { AccountCircle, Menu as MenuIcon } from '@mui/material';
+import { AccountCircle, Menu as MenuIcon } from '@mui/icons-material';
 
 const ParentLayout = () => {
     const { user, logout } = useAuth();

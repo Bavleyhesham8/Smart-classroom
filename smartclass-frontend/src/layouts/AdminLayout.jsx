@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Box, Drawer, AppBar, Toolbar, List, Typography, Divider, IconButton, ListItem, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
-import { Menu as MenuIcon, Dashboard as DashboardIcon, SupervisorAccount as AdminIcon, Settings as SettingsIcon, AccountCircle } from '@mui/material';
+import { Menu as MenuIcon, Dashboard as DashboardIcon, SupervisorAccount as AdminIcon, Settings as SettingsIcon, AccountCircle } from '@mui/icons-material';
 
 const drawerWidth = 240;
 

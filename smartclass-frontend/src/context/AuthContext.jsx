@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
             setUser(JSON.parse(storedUser));
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         }
+        setLoading(false);
     }, []);
 
     const login = async (email, password) => {
