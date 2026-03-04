@@ -30,8 +30,9 @@ TARGET_FPS = 30
 
 # ═══════════════════════════════════════════
 #  INSIGHTFACE
+#  Enhancement 3: back to buffalo_l — best accuracy, GPU is stable
 # ═══════════════════════════════════════════
-INSIGHT_MODEL = "buffalo_sc"
+INSIGHT_MODEL = "buffalo_l"    # ← upgraded from buffalo_sc
 DET_SIZE      = (320, 320)
 USE_GPU       = True
 
@@ -57,18 +58,28 @@ REID_TIMEOUT       = 300
 # ═══════════════════════════════════════════
 #  STRANGER / VISITOR ALERT
 # ═══════════════════════════════════════════
-STRANGER_SIM_THRESH   = 0.52   # cosine sim to match same stranger seen before
-STRANGER_ALERT_FRAMES = 20     # unknown frames before alert triggers
-STRANGER_SAVE_BEST_N  = 3      # save top-N face crops per stranger sighting
-ALERT_FLASH_FRAMES    = 30     # red border flash duration (frames)
+STRANGER_SIM_THRESH   = 0.52
+STRANGER_ALERT_FRAMES = 20
+STRANGER_SAVE_BEST_N  = 3
+ALERT_FLASH_FRAMES    = 30
 
 # ═══════════════════════════════════════════
 #  YOLO + BYTETRACK
+#  Enhancement 4: YOLO26n — NMS-free, faster, better small objects
 # ═══════════════════════════════════════════
-YOLO_WEIGHTS  = "yolov8n.pt"
+YOLO_WEIGHTS  = "yolo26n.pt"   # ← upgraded from yolov8n.pt
 YOLO_CONF     = 0.45
 TRACK_BUFFER  = 90
-FACE_DET_SKIP = 2
+
+# ═══════════════════════════════════════════
+#  Enhancement 1: Smart motion-based face detection skip
+#  Instead of fixed every-N-frames, skip based on how much
+#  people are actually moving in the scene
+# ═══════════════════════════════════════════
+FACE_DET_SKIP       = 2        # fallback fixed skip (used when motion low)
+MOTION_THRESH_HIGH  = 800.0    # mean pixel diff → always run face det
+MOTION_THRESH_LOW   = 150.0    # mean pixel diff → can skip face det
+FACE_DET_MAX_SKIP   = 5        # never skip more than this many frames
 
 # ═══════════════════════════════════════════
 #  VISUALIZATION
