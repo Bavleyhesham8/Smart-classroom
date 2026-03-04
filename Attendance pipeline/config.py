@@ -6,13 +6,19 @@ import os
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 DB_DIR    = os.path.join(BASE_DIR, "database")
 ATT_DIR   = os.path.join(BASE_DIR, "attendance")
+STR_DIR   = os.path.join(BASE_DIR, "strangers")
+STR_IMG   = os.path.join(STR_DIR,  "images")
 
 os.makedirs(DB_DIR,  exist_ok=True)
 os.makedirs(ATT_DIR, exist_ok=True)
+os.makedirs(STR_DIR, exist_ok=True)
+os.makedirs(STR_IMG, exist_ok=True)
 
 STUDENTS_CSV    = os.path.join(DB_DIR, "students.csv")
 EMBEDDINGS_FILE = os.path.join(DB_DIR, "embeddings.npz")
 ATTENDANCE_TMPL = os.path.join(ATT_DIR, "attendance_{ts}.csv")
+STRANGERS_CSV   = os.path.join(STR_DIR, "strangers.csv")
+STRANGERS_EMB   = os.path.join(STR_DIR, "embeddings.npz")
 
 # ═══════════════════════════════════════════
 #  CAMERA
@@ -24,31 +30,37 @@ TARGET_FPS = 30
 
 # ═══════════════════════════════════════════
 #  INSIGHTFACE
-#  buffalo_sc = faster, good accuracy (recommended for real-time)
-#  buffalo_l  = slower, best accuracy (use if recognition is poor)
 # ═══════════════════════════════════════════
-INSIGHT_MODEL = "buffalo_sc"   # switched from buffalo_l for speed
-DET_SIZE      = (320, 320)     # reduced from 640 — still reliable at webcam range
+INSIGHT_MODEL = "buffalo_sc"
+DET_SIZE      = (320, 320)
 USE_GPU       = True
 
 # ═══════════════════════════════════════════
 #  ENROLLMENT THRESHOLDS
 # ═══════════════════════════════════════════
-FRONT_YAW_MAX    = 30
-SIDE_YAW_MIN     = 12
-SIDE_YAW_MAX     = 80
-PITCH_MAX        = 40
-HOLD_FRAMES      = 10
+FRONT_YAW_MAX = 30
+SIDE_YAW_MIN  = 12
+SIDE_YAW_MAX  = 80
+PITCH_MAX     = 40
+HOLD_FRAMES   = 10
 
 # ═══════════════════════════════════════════
 #  RECOGNITION
 # ═══════════════════════════════════════════
-SIM_THRESHOLD      = 0.38   # identify match threshold
-DUP_THRESHOLD      = 0.60   # similarity above this = already enrolled
-RECOG_SMOOTH_N     = 7      # rolling vote window
-CONFIRM_THRESHOLD  = 0.50   # similarity needed to "confirm" identity lock
-CONFIRM_VOTES      = 5      # consecutive matching votes to lock identity
-REID_TIMEOUT       = 300    # frames to remember a lost identity (~10s @ 30fps)
+SIM_THRESHOLD      = 0.38
+DUP_THRESHOLD      = 0.60
+RECOG_SMOOTH_N     = 7
+CONFIRM_THRESHOLD  = 0.50
+CONFIRM_VOTES      = 5
+REID_TIMEOUT       = 300
+
+# ═══════════════════════════════════════════
+#  STRANGER / VISITOR ALERT
+# ═══════════════════════════════════════════
+STRANGER_SIM_THRESH   = 0.52   # cosine sim to match same stranger seen before
+STRANGER_ALERT_FRAMES = 20     # unknown frames before alert triggers
+STRANGER_SAVE_BEST_N  = 3      # save top-N face crops per stranger sighting
+ALERT_FLASH_FRAMES    = 30     # red border flash duration (frames)
 
 # ═══════════════════════════════════════════
 #  YOLO + BYTETRACK
@@ -56,7 +68,7 @@ REID_TIMEOUT       = 300    # frames to remember a lost identity (~10s @ 30fps)
 YOLO_WEIGHTS  = "yolov8n.pt"
 YOLO_CONF     = 0.45
 TRACK_BUFFER  = 90
-FACE_DET_SKIP = 2      # reduced from 3 for faster re-ID on re-entry
+FACE_DET_SKIP = 2
 
 # ═══════════════════════════════════════════
 #  VISUALIZATION
