@@ -1,3 +1,6 @@
+import React from 'react'
+import { Toaster } from 'react-hot-toast'
+import AppRouter from './router/AppRouter'
 import { useAuth } from './context/AuthContext'
 
 function App() {

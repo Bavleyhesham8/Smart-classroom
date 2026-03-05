@@ -15,6 +15,9 @@ const CompleteProfile = () => {
     const [stream, setStream] = useState(null);
     const navigate = useNavigate();
     const { user } = useAuth();
+    const setFaceCaptures = useStore(s => s.setFaceCaptures);
+    const setProfilePhoto = useStore(s => s.setProfilePhoto);
+    const setProfileCompleted = useStore(s => s.setProfileCompleted);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [cameraError, setCameraError] = useState(null); // null, 'permission', 'unsupported', 'general'
 

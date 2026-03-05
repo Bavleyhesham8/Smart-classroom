@@ -79,11 +79,18 @@ export const AuthProvider = ({ children }) => {
             };
             const token = "mock-token-for-newly-approved-user";
 
+            // CRITICAL FIX: Reset the global Zustand state for this new user so they don't inherit a previous user's completed profile status on the same machine.
+            store.setProfileCompleted(false);
+            store.setFaceCaptures([]);
+            store.setProfilePhoto(null);
+
             localStorage.setItem('smartclass_token', token);
             localStorage.setItem('smartclass_user', JSON.stringify(userData));
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setUser(userData);
-            return { success: true, role: 'parent' };
+            
+            // Return an explicit flag so Login.jsx knows to route them to the setup page immediately
+            return { success: true, role: 'parent', needsProfileCompletion: true };
         }
 
         try {
@@ -107,6 +114,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('smartclass_user');
         delete axios.defaults.headers.common['Authorization'];
         setUser(null);
+        
+        // Wipe local session states so the next user logging in on this machine doesn't inherit them
+        store.setProfileCompleted(false);
+        store.setFaceCaptures([]);
+        store.setProfilePhoto(null);
     };
 
     return (

@@ -42,7 +42,7 @@ const Login = () => {
             if (result.success) {
                 toast.success('Login successful!', { id: toastId });
                 // Check if profile needs completion (new users)
-                if (!profileCompleted && result.role === 'parent') {
+                if (result.needsProfileCompletion || (!profileCompleted && result.role === 'parent')) {
                     navigate('/complete-profile');
                 } else {
                     navigate(`/${result.role}/dashboard`);
