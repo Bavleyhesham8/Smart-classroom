@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import useStore from '../store/useStore';
 
 const AuthContext = createContext();
 
@@ -22,19 +23,79 @@ export const AuthProvider = ({ children }) => {
         }
         return null;
     });
-    const [loading] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Simple initialization check
+        console.log("AuthContext: Initializing session...");
+        const storedUser = localStorage.getItem('smartclass_user');
+        if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser);
+                setUser(parsed);
+                console.log("AuthContext: Session restored for", parsed.email);
+            } catch (e) {
+                console.error("AuthContext: Sync error", e);
+            }
+        }
+
+        // Safety timeout to ensure loading always finishes
+        const timer = setTimeout(() => {
+            setLoading(false);
+            console.log("AuthContext: Loading finalized.");
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Zustand store references (re-exported for convenience)
+    const store = useStore();
+
+    // Load reports from backend into Zustand on login
+    useEffect(() => {
+        if (user && store.reports.length === 0) {
+            axios.get('/api/reports')
+                .then(res => store.setReports(res.data))
+                .catch(err => console.error("Failed to fetch reports", err));
+        }
+    }, [user]);
+
+    // Initialize theme from Zustand
+    useEffect(() => {
+        store.initTheme();
+    }, []);
 
     const login = async (email, password) => {
-        try {
-            const response = await axios.post('/api/auth/login', { email, password });
-            const { token, user } = response.data;
+        // --- Added Check: See if this is a newly approved user in Zustand (local persistence) ---
+        const approvedUser = store.approvedUsers?.find(u => u.email === email && password === 'Smart@2026');
+
+        if (approvedUser) {
+            const userData = {
+                name: approvedUser.parentName,
+                role: 'parent',
+                email: approvedUser.email,
+                childId: 'S001', // Link to a default mock student for testing
+                isNewUser: true
+            };
+            const token = "mock-token-for-newly-approved-user";
 
             localStorage.setItem('smartclass_token', token);
-            localStorage.setItem('smartclass_user', JSON.stringify(user));
+            localStorage.setItem('smartclass_user', JSON.stringify(userData));
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            setUser(userData);
+            return { success: true, role: 'parent' };
+        }
+
+        try {
+            const response = await axios.post('/api/auth/login', { email, password });
+            const { token, user: userData } = response.data;
+
+            localStorage.setItem('smartclass_token', token);
+            localStorage.setItem('smartclass_user', JSON.stringify(userData));
 
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            setUser(user);
-            return { success: true, role: user.role };
+            setUser(userData);
+            return { success: true, role: userData.role };
         } catch (error) {
             console.error('Login error:', error);
             return { success: false, message: error.response?.data?.error || 'Login failed' };
@@ -48,47 +109,21 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
-    // --- MOCK V3 SHARED STATE ---
-    const [pendingUsers, setPendingUsers] = useState([
-        { id: 'PU001', parentName: 'Sarah Connor', parentEmail: 'sarah.c@example.com', childName: 'John Connor', childGrade: 'Grade 10', date: '2026-03-05', status: 'Pending' }
-    ]);
-    const [reports, setReports] = useState([]);
-
-    useEffect(() => {
-        if (user) {
-            axios.get('/api/reports')
-                .then(res => setReports(res.data))
-                .catch(err => console.error("Failed to fetch reports context", err));
-        }
-    }, [user]);
-
-    const approveUser = (id) => {
-        setPendingUsers(prev => prev.filter(u => u.id !== id));
-        toast.success("User approved! Mock email sent with credentials.");
-    };
-
-    const rejectUser = (id) => {
-        setPendingUsers(prev => prev.filter(u => u.id !== id));
-        toast.success("User sign up request rejected.");
-    };
-
-    const updateReportStatus = (id, newStatus, logAction) => {
-        setReports(prev => prev.map(r => {
-            if (r.id === id) {
-                const updatedLog = [...(r.auditLog || []), { date: new Date().toISOString(), action: logAction }];
-                return { ...r, status: newStatus, auditLog: updatedLog };
-            }
-            return r;
-        }));
-    };
-
     return (
         <AuthContext.Provider value={{
             user, login, logout, loading,
-            pendingUsers, approveUser, rejectUser,
-            reports, setReports, updateReportStatus
+            // Bridge to Zustand for backward compatibility
+            pendingUsers: store.pendingUsers,
+            approveUser: (id) => { store.approveUser(id); toast.success("User approved! Temp password: Smart@2026"); },
+            rejectUser: (id) => { store.rejectUser(id); toast.success("Signup request denied."); },
+            reports: store.reports,
+            setReports: store.setReports,
+            addReport: store.addReport,
+            updateReportStatus: (id, s, l) => { store.updateReportStatus(id, s, l); },
+            approveReport: (id) => { store.approveReport(id); toast.success("Report approved & pushed to Parent!"); },
+            refuseReport: (id, reason) => { store.refuseReport(id, reason); toast.success("Report refused."); },
         }}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };

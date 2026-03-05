@@ -1,6 +1,7 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import useStore from '../store/useStore';
 
 // Layouts
 import TeacherLayout from '../layouts/TeacherLayout';
@@ -16,15 +17,26 @@ import CompleteProfile from '../pages/CompleteProfile';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
+    const profileCompleted = useStore(s => s.profileCompleted);
+    const location = useLocation();
 
-    if (loading) return <div>Loading...</div>;
+    // The global App.jsx handles the initial "loading" state.
+    // We only need to guard against access while loading or if unauthenticated.
+    if (loading) return null;
 
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" replace state={{ from: location }} />;
     }
 
+    // Force profile completion for parents
+    if (user.role === 'parent' && !profileCompleted && location.pathname !== '/complete-profile') {
+        return <Navigate to="/complete-profile" replace />;
+    }
+
+    // Role-based access control
     if (allowedRoles && !allowedRoles.includes(user.role)) {
-        return <Navigate to={`/${user.role}/dashboard`} replace />;
+        const targetPath = user.role === 'admin' ? '/admin/dashboard' : (user.role === 'teacher' ? '/teacher/dashboard' : '/parent/dashboard');
+        return <Navigate to={targetPath} replace />;
     }
 
     return children;

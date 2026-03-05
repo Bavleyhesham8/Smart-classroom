@@ -4,13 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { School, Lock, Mail, User, Phone, BookOpen, ArrowRight, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import useStore from '../store/useStore';
 
 const Login = () => {
-    const [activeTab, setActiveTab] = useState('signin'); // 'signin', 'signup', 'forgot'
+    const [activeTab, setActiveTab] = useState('signin');
 
     // Sign In State
-    const [email, setEmail] = useState('teacher@smartclass.ai');
-    const [password, setPassword] = useState('password123');
+    const [email, setEmail] = useState('teacher@example.com');
+    const [password, setPassword] = useState('pass');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     // Sign Up State
@@ -25,6 +26,8 @@ const Login = () => {
 
     const { login } = useAuth();
     const navigate = useNavigate();
+    const addPendingUser = useStore(s => s.addPendingUser);
+    const profileCompleted = useStore(s => s.profileCompleted);
 
     const handleSignIn = async (e) => {
         e.preventDefault();
@@ -33,13 +36,17 @@ const Login = () => {
         setIsLoggingIn(true);
         const toastId = toast.loading('Authenticating...');
 
-        // Slight delay for effect
         setTimeout(async () => {
             const result = await login(email, password);
             setIsLoggingIn(false);
             if (result.success) {
-                toast.success('Login successful', { id: toastId });
-                navigate(`/${result.role}/dashboard`);
+                toast.success('Login successful!', { id: toastId });
+                // Check if profile needs completion (new users)
+                if (!profileCompleted && result.role === 'parent') {
+                    navigate('/complete-profile');
+                } else {
+                    navigate(`/${result.role}/dashboard`);
+                }
             } else {
                 toast.error(result.message, { id: toastId });
             }
@@ -60,13 +67,24 @@ const Login = () => {
             return toast.error("Please fill in child details");
         }
 
-        const toastId = toast.loading("Submitting request...");
+        const toastId = toast.loading("Submitting registration...");
         setTimeout(() => {
-            toast.success('Registration request sent! Admin will review shortly.', { id: toastId, duration: 4000 });
+            const newUser = {
+                id: `PU${Date.now().toString().slice(-4)}`,
+                parentName: signupData.parentName,
+                parentEmail: signupData.parentEmail,
+                parentPhone: signupData.parentPhone,
+                childName: signupData.childName,
+                childGrade: signupData.childGrade,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending',
+            };
+            addPendingUser(newUser);
+            toast.success('Registration submitted! An Admin will review your request. You will receive temporary credentials once approved.', { id: toastId, duration: 5000 });
             setActiveTab('signin');
             setStep(1);
             setSignupData({ parentName: '', parentEmail: '', parentPhone: '', childName: '', childGrade: '' });
-        }, 1000);
+        }, 1200);
     };
 
     const handleForgotSubmit = (e) => {
@@ -81,7 +99,6 @@ const Login = () => {
         }, 800);
     };
 
-    // Form variants for animation
     const formVariants = {
         hidden: { opacity: 0, x: 20 },
         visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
@@ -90,12 +107,14 @@ const Login = () => {
 
     return (
         <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-8 overflow-hidden font-sans">
-            {/* Background Image with Overlay */}
+            {/* Premium Wallpaper Background */}
             <div
-                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-transform duration-10000 hover:scale-105"
-                style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1524169358666-eb9c3855d69d?q=80&w=2070&auto=format&fit=crop")' }}
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat scale-105"
+                style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop")' }}
             />
-            <div className="absolute inset-0 z-0 bg-slate-900/70 backdrop-blur-md dark:bg-slate-950/80" />
+            {/* 40% dark overlay + vignette */}
+            <div className="absolute inset-0 z-0 bg-gradient-to-br from-slate-900/60 via-slate-900/40 to-slate-900/70" />
+            <div className="absolute inset-0 z-0" style={{ background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%)' }} />
 
             {/* Main Card */}
             <div className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-700/50 p-8 flex flex-col relative z-10">
@@ -127,7 +146,6 @@ const Login = () => {
                         >
                             Sign Up
                         </button>
-                        {/* Animated Tab Indicator */}
                         <motion.div
                             className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white dark:bg-slate-700 rounded-lg shadow-sm"
                             initial={false}
@@ -151,7 +169,7 @@ const Login = () => {
                                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Email</label>
                                     <div className="relative">
                                         <input
-                                            type="email" required
+                                            type="text" required
                                             value={email} onChange={(e) => setEmail(e.target.value)}
                                             className="w-full h-12 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all dark:text-white"
                                             placeholder="Enter your email"
@@ -176,9 +194,28 @@ const Login = () => {
                                         Forgot password?
                                     </button>
                                 </div>
+
+                                {/* Quick login helper */}
+                                <div className="flex gap-2 flex-wrap">
+                                    {[
+                                        { label: 'Admin', email: 'admin@example.com', pass: 'pass' },
+                                        { label: 'Teacher', email: 'teacher@example.com', pass: 'pass' },
+                                        { label: 'Parent', email: 'parent@example.com', pass: 'pass' },
+                                    ].map(q => (
+                                        <button
+                                            key={q.label}
+                                            type="button"
+                                            onClick={() => { setEmail(q.email); setPassword(q.pass); }}
+                                            className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700"
+                                        >
+                                            {q.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 <button
                                     type="submit" disabled={isLoggingIn}
-                                    className="w-full h-12 bg-slate-900 hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl font-bold flex items-center justify-center transition-all disabled:opacity-70 mt-4"
+                                    className="w-full h-12 bg-slate-900 hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl font-bold flex items-center justify-center transition-all disabled:opacity-70 mt-2"
                                 >
                                     {isLoggingIn ? (
                                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -205,30 +242,24 @@ const Login = () => {
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Parent Name</label>
                                             <div className="relative">
-                                                <input
-                                                    type="text" required value={signupData.parentName} onChange={(e) => setSignupData({ ...signupData, parentName: e.target.value })}
-                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="John Doe"
-                                                />
+                                                <input type="text" required value={signupData.parentName} onChange={(e) => setSignupData({ ...signupData, parentName: e.target.value })}
+                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="John Doe" />
                                                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                                             </div>
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Parent Email</label>
                                             <div className="relative">
-                                                <input
-                                                    type="email" required value={signupData.parentEmail} onChange={(e) => setSignupData({ ...signupData, parentEmail: e.target.value })}
-                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="john@example.com"
-                                                />
+                                                <input type="email" required value={signupData.parentEmail} onChange={(e) => setSignupData({ ...signupData, parentEmail: e.target.value })}
+                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="john@example.com" />
                                                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                                             </div>
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Phone Number</label>
                                             <div className="relative">
-                                                <input
-                                                    type="tel" value={signupData.parentPhone} onChange={(e) => setSignupData({ ...signupData, parentPhone: e.target.value })}
-                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="+1 (555) 000-0000"
-                                                />
+                                                <input type="tel" value={signupData.parentPhone} onChange={(e) => setSignupData({ ...signupData, parentPhone: e.target.value })}
+                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="+1 (555) 000-0000" />
                                                 <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                                             </div>
                                         </div>
@@ -241,20 +272,16 @@ const Login = () => {
                                         <div className="space-y-1">
                                             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Child Name</label>
                                             <div className="relative">
-                                                <input
-                                                    type="text" required value={signupData.childName} onChange={(e) => setSignupData({ ...signupData, childName: e.target.value })}
-                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="Jane Doe"
-                                                />
+                                                <input type="text" required value={signupData.childName} onChange={(e) => setSignupData({ ...signupData, childName: e.target.value })}
+                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="Jane Doe" />
                                                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                                             </div>
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Child Grade ID</label>
+                                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Child Grade</label>
                                             <div className="relative">
-                                                <input
-                                                    type="text" required value={signupData.childGrade} onChange={(e) => setSignupData({ ...signupData, childGrade: e.target.value })}
-                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="e.g. 10th Grade"
-                                                />
+                                                <input type="text" required value={signupData.childGrade} onChange={(e) => setSignupData({ ...signupData, childGrade: e.target.value })}
+                                                    className="w-full h-11 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-10 text-sm focus:ring-2 focus:ring-teal-500 dark:text-white outline-none" placeholder="e.g. 10th Grade" />
                                                 <BookOpen className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                                             </div>
                                         </div>
@@ -283,25 +310,18 @@ const Login = () => {
                                     <ArrowLeft className="w-4 h-4 mr-1" /> Back to Sign In
                                 </button>
                                 <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">Reset Password</h2>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Enter your email and we'll send you a link to reset your password.</p>
-
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Enter your email and we&apos;ll send you a link to reset your password.</p>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">Email</label>
                                     <div className="relative">
-                                        <input
-                                            type="email" required
-                                            value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
+                                        <input type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
                                             className="w-full h-12 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all dark:text-white"
-                                            placeholder="Enter your email"
-                                        />
+                                            placeholder="Enter your email" />
                                         <Mail className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
                                     </div>
                                 </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full h-12 bg-slate-900 hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl font-bold flex items-center justify-center transition-all mt-4"
-                                >
+                                <button type="submit"
+                                    className="w-full h-12 bg-slate-900 hover:bg-slate-800 dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl font-bold flex items-center justify-center transition-all mt-4">
                                     Send Reset Link
                                 </button>
                             </motion.form>

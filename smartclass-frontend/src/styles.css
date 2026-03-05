@@ -87,14 +87,51 @@
 
   #root {
     min-height: 100vh;
-    background-image:
-      radial-gradient(circle at center, var(--border) 1px, transparent 1.5px);
-    background-size: 24px 24px;
-    background-position: 0 0;
-    background-attachment: fixed;
   }
 
   * {
     border-color: var(--border);
   }
+}
+
+/* Dashboard layout subtle top banner - blurred background image at 10% opacity */
+.dashboard-banner {
+  position: relative;
+}
+
+.dashboard-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background-image: url('https://images.unsplash.com/photo-1497633762265-9d179a990aa6?q=80&w=2073&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.06;
+  filter: blur(8px);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* React Calendar dark mode support */
+.dark .react-calendar {
+  background: transparent !important;
+  border: none !important;
+  color: #f8fafc !important;
+}
+
+.dark .react-calendar__tile {
+  color: #f8fafc !important;
+}
+
+.dark .react-calendar__tile--active {
+  background: #0d9488 !important;
+}
+
+.dark .react-calendar__navigation button {
+  color: #f8fafc !important;
 }

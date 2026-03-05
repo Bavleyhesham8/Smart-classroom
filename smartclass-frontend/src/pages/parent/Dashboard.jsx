@@ -41,21 +41,42 @@ import {
     XCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useStore from '../../store/useStore';
 import Notification from '../../components/Notification';
 import { cn } from '../../lib/utils';
 
 const ParentDashboard = () => {
     const { user } = useAuth();
+    const globalReports = useStore(s => s.reports);
     const [student, setStudent] = useState(null);
     const [reports, setReports] = useState([]);
     const [teacherData, setTeacherData] = useState(null);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+    const [loadError, setLoadError] = useState(false);
+
+    // Sync reports from Zustand (Admin actions update this instantly)
+    useEffect(() => {
+        if (globalReports.length > 0) {
+            // Filter reports for the parent's child and only show Approved ones
+            const parentReports = globalReports.filter(r =>
+                r.status === 'Approved' || r.status === 'Sent'
+            );
+            setReports(parentReports);
+        }
+    }, [globalReports]);
 
     useEffect(() => {
         fetchChildData();
         fetchReports();
         fetchTeacherData();
+
+        // Safety timeout for loading state
+        const timer = setTimeout(() => {
+            if (!student) setLoadError(true);
+        }, 5000);
+
+        return () => clearTimeout(timer);
     }, [user]);
 
     const fetchChildData = async () => {
@@ -89,11 +110,27 @@ const ParentDashboard = () => {
 
     if (!student) {
         return (
-            <div className="flex h-[80vh] items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
-                    <p className="text-slate-500 font-medium font-sans">Loading child profile...</p>
-                </div>
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+                {!loadError ? (
+                    <>
+                        <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin mb-4" />
+                        <p className="text-slate-500 font-medium font-sans">Loading child profile...</p>
+                    </>
+                ) : (
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <AlertCircle size={32} />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Unable to load profile</h3>
+                        <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">We couldn't retrieve the student data. Please check your connection or try again.</p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            className="flex items-center gap-2 px-6 py-2 bg-slate-900 dark:bg-teal-600 text-white rounded-xl font-bold hover:scale-105 transition-transform mx-auto"
+                        >
+                            <RefreshCw size={16} /> Retry
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }

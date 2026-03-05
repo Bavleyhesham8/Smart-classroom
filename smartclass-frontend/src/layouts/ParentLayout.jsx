@@ -21,7 +21,7 @@ const ParentLayout = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans dashboard-banner">
             {/* Top Navigation */}
             <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

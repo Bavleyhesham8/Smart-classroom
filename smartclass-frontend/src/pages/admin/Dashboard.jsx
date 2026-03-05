@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import useStore from '../../store/useStore';
 import {
     Users,
     Settings,
@@ -38,7 +40,7 @@ import { cn } from '../../lib/utils';
 import { exportToCSV } from '../../utils/csvExport';
 
 const AdminDashboard = () => {
-    const { pendingUsers, approveUser, rejectUser, reports, updateReportStatus } = useAuth();
+    const { pendingUsers, approveUser, rejectUser, reports, approveReport, refuseReport, updateReportStatus } = useAuth();
     const [students, setStudents] = useState([]);
     const [teachers, setTeachers] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -46,6 +48,8 @@ const AdminDashboard = () => {
     const [selectedEntity, setSelectedEntity] = useState(null);
     const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
     const [isInvestigateModalOpen, setIsInvestigateModalOpen] = useState(false);
+    const [isRefuseModalOpen, setIsRefuseModalOpen] = useState(false);
+    const [refuseReason, setRefuseReason] = useState('');
     const [selectedReport, setSelectedReport] = useState(null);
 
     useEffect(() => {
@@ -59,10 +63,23 @@ const AdminDashboard = () => {
             ]);
             setStudents(sRes.data);
 
-            // Mocking teacher list from mockUsers for now
             const mockTeachers = [
-                { id: 'T001', name: 'Mr. Teacher', email: 'teacher@example.com', subject: 'Mathematics', class: 'Grade 10-A', experience: '8 Years' },
-                { id: 'T002', name: 'Ms. Sarah', email: 'sarah@example.com', subject: 'Physics', class: 'Grade 11-B', experience: '5 Years' }
+                {
+                    id: 'T001', name: 'Mr. Teacher', email: 'teacher@example.com', subject: 'Mathematics',
+                    class: 'Grade 10-A', experience: '8 Years',
+                    salaryStatus: { status: 'Paid', nextPayment: '2026-03-31', history: [{ month: 'Feb 2026', amount: 4500, paid: true }, { month: 'Jan 2026', amount: 4500, paid: true }] },
+                    schedule: ['Math 101 (8 AM)', 'Algebra II (10 AM)', 'Calculus (1 PM)'],
+                    strengths: ['Excellent engagement (4.9/5)', 'Clear explanations'],
+                    weaknesses: ['Needs faster assignment feedback']
+                },
+                {
+                    id: 'T002', name: 'Ms. Sarah', email: 'sarah@example.com', subject: 'Physics',
+                    class: 'Grade 11-B', experience: '5 Years',
+                    salaryStatus: { status: 'Unpaid', nextPayment: '2026-03-15', history: [{ month: 'Feb 2026', amount: 4200, paid: false }] },
+                    schedule: ['Physics 101 (9 AM)', 'Lab (11 AM)'],
+                    strengths: ['Practical lab orientation', 'Student rapport'],
+                    weaknesses: ['Late start to classes']
+                }
             ];
             setTeachers(mockTeachers);
         } catch (err) {
@@ -70,13 +87,18 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleValidateReport = async (reportId) => {
-        try {
-            updateReportStatus(reportId, 'Approved', 'Approved by Admin & Pushed to Parent');
-            setIsValidateModalOpen(false);
-        } catch (err) {
-            console.error("Validation failed", err);
-        }
+    const handleApproveReport = (reportId) => {
+        approveReport(reportId);
+        setIsValidateModalOpen(false);
+        setSelectedReport(null);
+    };
+
+    const handleRefuseReport = () => {
+        if (!refuseReason.trim()) return toast.error('Please provide a reason.');
+        refuseReport(selectedReport.id, refuseReason);
+        setIsRefuseModalOpen(false);
+        setRefuseReason('');
+        setSelectedReport(null);
     };
 
     const tabs = [
@@ -361,42 +383,103 @@ const AdminDashboard = () => {
                                             <p className="text-xs font-bold text-teal-600 mb-2">Performance Index</p>
                                             <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.experience || `${selectedEntity.performance?.engagement_avg || 88}%`}</p>
                                         </div>
-                                        <div className="sm:col-span-2 p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{activeTab === 'teachers' ? 'Salary Status' : 'Fee Status'}</p>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={cn("w-3 h-3 rounded-full", (selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid') === 'Paid' ? 'bg-emerald-500' : 'bg-amber-500')} />
-                                                    <p className="text-xl font-black text-slate-900 dark:text-white">
-                                                        {selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid'}
-                                                    </p>
+
+                                        {/* Fee / Salary Status with Progress Bar */}
+                                        <div className="sm:col-span-2 p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{activeTab === 'teachers' ? 'Salary Status' : 'Fee Status'}</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn("w-3 h-3 rounded-full", (selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid') === 'Paid' ? 'bg-emerald-500' : 'bg-amber-500')} />
+                                                        <p className="text-xl font-black text-slate-900 dark:text-white">
+                                                            {selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid'}
+                                                        </p>
+                                                    </div>
                                                 </div>
+                                                {(selectedEntity.feeStatus?.status === 'Unpaid' || selectedEntity.salaryStatus?.status === 'Unpaid') && (
+                                                    <button
+                                                        onClick={() => toast.success('Polite reminder sent via email & SMS!')}
+                                                        className="px-6 py-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold shadow-sm border border-slate-200 dark:border-slate-600 hover:border-blue-500 transition-colors flex items-center gap-2"
+                                                    >
+                                                        <Send size={16} className="text-blue-500" /> Send Polite Reminder
+                                                    </button>
+                                                )}
                                             </div>
-                                            {(selectedEntity.feeStatus?.status === 'Unpaid' || selectedEntity.salaryStatus?.status === 'Unpaid') && (
-                                                <button className="px-6 py-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold shadow-sm border border-slate-200 dark:border-slate-600 hover:border-blue-500 transition-colors flex items-center gap-2">
-                                                    <Send size={16} className="text-blue-500" /> Send Reminder
-                                                </button>
+                                            {/* Progress bar */}
+                                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2.5">
+                                                <div className="bg-emerald-500 h-2.5 rounded-full transition-all" style={{ width: `${selectedEntity.feeStatus?.progress || 100}%` }} />
+                                            </div>
+                                            {/* Payment History */}
+                                            {(selectedEntity.feeStatus?.history || selectedEntity.salaryStatus?.history) && (
+                                                <div className="space-y-2 mt-2">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment History</p>
+                                                    {(selectedEntity.feeStatus?.history || selectedEntity.salaryStatus?.history || []).map((h, i) => (
+                                                        <div key={i} className="flex items-center justify-between text-sm p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                            <span className="text-slate-600 dark:text-slate-400 font-medium">{h.date || h.month}</span>
+                                                            <span className="font-bold text-slate-900 dark:text-white">${h.amount}</span>
+                                                            <span className={cn("text-xs font-bold", (h.status === 'Cleared' || h.paid) ? 'text-emerald-500' : 'text-amber-500')}>
+                                                                {h.status || (h.paid ? 'Paid' : 'Pending')}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="bg-slate-50 dark:bg-slate-800/30 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h4 className="font-bold text-slate-900 dark:text-white">Recent Log Entries</h4>
-                                        <Download size={18} className="text-slate-400 cursor-pointer" />
-                                    </div>
-                                    <div className="space-y-4">
-                                        {[1, 2, 3].map(i => (
-                                            <div key={i} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Login verified via CV Engine</span>
-                                                </div>
-                                                <span className="text-xs text-slate-400 font-mono">10:0{i} AM</span>
+                                {/* Parent Contact (for students) */}
+                                {activeTab === 'students' && selectedEntity.parentContact && (
+                                    <div className="p-8 rounded-[2rem] bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 space-y-3">
+                                        <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2"><Users size={16} /> Linked Parent Details</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                                            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Name</p>
+                                                <p className="font-bold text-slate-900 dark:text-white">{selectedEntity.parentContact.name}</p>
                                             </div>
-                                        ))}
+                                            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Phone</p>
+                                                <p className="font-bold text-slate-900 dark:text-white">{selectedEntity.parentContact.phone}</p>
+                                            </div>
+                                            <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email</p>
+                                                <p className="font-bold text-slate-900 dark:text-white">{selectedEntity.parentContact.email}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
+                                {/* Teacher Schedule & Strengths (for teachers) */}
+                                {activeTab === 'teachers' && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {selectedEntity.schedule && (
+                                            <div className="p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800">
+                                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Daily Schedule</h4>
+                                                <div className="space-y-3">
+                                                    {selectedEntity.schedule.map((s, i) => (
+                                                        <div key={i} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                            {s}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="space-y-6">
+                                            {selectedEntity.strengths && (
+                                                <div className="p-8 rounded-[2rem] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
+                                                    <h4 className="text-xs font-black text-emerald-600 uppercase tracking-widest mb-3">Strengths</h4>
+                                                    <ul className="space-y-2">{selectedEntity.strengths.map((s, i) => <li key={i} className="text-sm text-slate-700 dark:text-slate-300">• {s}</li>)}</ul>
+                                                </div>
+                                            )}
+                                            {selectedEntity.weaknesses && (
+                                                <div className="p-8 rounded-[2rem] bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+                                                    <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-3">Areas for Improvement</h4>
+                                                    <ul className="space-y-2">{selectedEntity.weaknesses.map((w, i) => <li key={i} className="text-sm text-slate-700 dark:text-slate-300">• {w}</li>)}</ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -457,7 +540,7 @@ const AdminDashboard = () => {
                                 <p className="text-sm text-slate-500 font-medium">Review teacher submissions before publishing to parents.</p>
                             </div>
                             <span className="px-4 py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-full text-xs font-black uppercase tracking-widest ring-1 ring-rose-500/20">
-                                {reports.length} Pending
+                                {reports.filter(r => r.status === 'Pending Approval').length} Pending
                             </span>
                         </div>
                         <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -467,6 +550,13 @@ const AdminDashboard = () => {
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-md">
                                                 {report.subject}
+                                            </span>
+                                            <span className={cn("px-2 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md",
+                                                report.status === 'Approved' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' :
+                                                    report.status === 'Refused' ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400' :
+                                                        'bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                                            )}>
+                                                {report.status}
                                             </span>
                                             <span className="text-xs text-slate-400 font-medium">{report.date}</span>
                                         </div>
@@ -478,20 +568,28 @@ const AdminDashboard = () => {
                                         </p>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Submitted by {report.teacherName}</p>
                                     </div>
-                                    <div className="flex gap-3 shrink-0">
-                                        <button
-                                            onClick={() => { setSelectedReport(report); setIsInvestigateModalOpen(true); }}
-                                            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-slate-200 transition-all flex items-center gap-2"
-                                        >
-                                            <Search size={16} /> Investigate
-                                        </button>
-                                        <button
-                                            onClick={() => { setSelectedReport(report); setIsValidateModalOpen(true); }}
-                                            className="px-6 py-3 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-teal-700 shadow-xl shadow-teal-500/20 flex items-center gap-2 transition-all"
-                                        >
-                                            <CheckCircle2 size={16} /> Approve & Send
-                                        </button>
-                                    </div>
+                                    {report.status === 'Pending Approval' && (
+                                        <div className="flex gap-3 shrink-0">
+                                            <button
+                                                onClick={() => { setSelectedReport(report); setIsInvestigateModalOpen(true); }}
+                                                className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-slate-200 transition-all flex items-center gap-2"
+                                            >
+                                                <Search size={16} /> Investigate
+                                            </button>
+                                            <button
+                                                onClick={() => { setSelectedReport(report); setIsRefuseModalOpen(true); }}
+                                                className="px-5 py-3 bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-rose-200 transition-all flex items-center gap-2"
+                                            >
+                                                <X size={16} /> Refuse
+                                            </button>
+                                            <button
+                                                onClick={() => { setSelectedReport(report); setIsValidateModalOpen(true); }}
+                                                className="px-5 py-3 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-teal-700 shadow-xl shadow-teal-500/20 flex items-center gap-2 transition-all"
+                                            >
+                                                <CheckCircle2 size={16} /> Approve
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -638,10 +736,56 @@ const AdminDashboard = () => {
                                         Go Back
                                     </button>
                                     <button
-                                        onClick={() => handleValidateReport(selectedReport.id)}
+                                        onClick={() => handleApproveReport(selectedReport.id)}
                                         className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-500/20 flex items-center justify-center gap-2 transition-all"
                                     >
-                                        <Send size={18} /> Push to Parent
+                                        <Send size={18} /> Approve & Push to Parent
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Refuse Modal */}
+            <AnimatePresence>
+                {isRefuseModalOpen && selectedReport && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-2xl p-10"
+                        >
+                            <div className="flex justify-between items-center mb-8">
+                                <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 flex items-center gap-2 tracking-tight">
+                                    <XCircle size={28} /> Refuse Report
+                                </h3>
+                                <button onClick={() => { setIsRefuseModalOpen(false); setRefuseReason(''); }} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <XCircle size={32} />
+                                </button>
+                            </div>
+                            <div className="space-y-6">
+                                <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20">
+                                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">"{selectedReport.content}"</p>
+                                    <p className="text-xs text-slate-400 mt-2">By {selectedReport.teacherName} • {selectedReport.date}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Reason for Refusal *</label>
+                                    <textarea
+                                        value={refuseReason}
+                                        onChange={(e) => setRefuseReason(e.target.value)}
+                                        placeholder="Provide a reason for refusing this report..."
+                                        className="w-full h-32 mt-2 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500 outline-none transition-all resize-none"
+                                    />
+                                </div>
+                                <div className="flex gap-4">
+                                    <button onClick={() => { setIsRefuseModalOpen(false); setRefuseReason(''); }} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-all">
+                                        Cancel
+                                    </button>
+                                    <button onClick={handleRefuseReport} className="flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs bg-rose-600 text-white hover:bg-rose-700 shadow-xl shadow-rose-500/20 flex items-center justify-center gap-2 transition-all">
+                                        <X size={18} /> Confirm Refuse
                                     </button>
                                 </div>
                             </div>

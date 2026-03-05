@@ -7,7 +7,7 @@ import ProfileDropdown from '../components/ProfileDropdown';
 
 const menuItems = [
     { text: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/teacher/dashboard' },
-    { text: 'Students Roster', icon: <Users size={20} />, path: '/teacher/roster' },
+    // Student Roster is now an in-page tab, not a separate route that would cause a redirect
 ];
 
 const SidebarContent = ({ location, setMobileOpen, handleLogout, navigate }) => (
@@ -91,7 +91,7 @@ const TeacherLayout = () => {
             </aside>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 dashboard-banner">
                 {/* Top Navbar */}
                 <header className="h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10 sticky top-0">
                     <div className="flex items-center">
@@ -112,7 +112,7 @@ const TeacherLayout = () => {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto relative z-1">
                     <Outlet />
                 </main>
             </div>
