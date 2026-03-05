@@ -74,6 +74,30 @@ app.post('/api/attendance/override', authenticate, (req, res) => {
     }
 });
 
+// Get teacher specific data
+app.get('/api/teacher/data', authenticate, (req, res) => {
+    const { mockTeacherData } = require('./data/mockData');
+    res.json(mockTeacherData);
+});
+
+// Get reports
+app.get('/api/reports', authenticate, (req, res) => {
+    const { mockReports } = require('./data/mockData');
+    if (req.user.role === 'parent') {
+        const filtered = mockReports.filter(r => r.studentName === req.user.name || r.studentName === 'Alice Johnson'); // Mock logic for parent
+        return res.json(filtered);
+    }
+    res.json(mockReports);
+});
+
+// Update report status (Admin)
+app.post('/api/reports/validate', authenticate, (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+    const { reportId } = req.body;
+    // In-memory update logic would go here
+    res.json({ success: true, message: 'Report validated and sent to parent' });
+});
+
 app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
 });

@@ -76,12 +76,13 @@
 @layer base {
 
   html,
-  body {
+  body,
+  #root {
     background-color: var(--background) !important;
     color: var(--foreground) !important;
     filter: none !important;
-    /* Bypass potential extension filters */
     backdrop-filter: none !important;
+    -webkit-filter: none !important;
   }
 
   * {
