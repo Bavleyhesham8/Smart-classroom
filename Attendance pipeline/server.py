@@ -20,6 +20,7 @@ from pydantic import BaseModel
 
 import db_sqlite as db
 from config import BASE_DIR, ATT_DIR, STR_IMG
+from database import StudentDatabase
 
 app = FastAPI(title="Smart Classroom CV API", version="1.0")
 
@@ -176,11 +177,20 @@ def enroll_start(req: EnrollRequest):
     with _enroll_lock:
         if _enroll_status["stage"] not in ("idle", "done", "cancelled"):
             raise HTTPException(400, "Enrollment already in progress")
+        
+        # Check if pipeline is running and stop it (need camera)
+        status = db.get_pipeline_status()
+        if status.get("running"):
+            pipeline_stop()
+            import time
+            time.sleep(1.5) # Wait for camera release
+
         _enroll_status = {"stage": "starting", "progress": 0, "name": req.name}
 
     def run():
         from enrollment import run_enrollment_headless
-        run_enrollment_headless(req.name, _enroll_status, _enroll_lock)
+        run_enrollment_headless(req.name, _enroll_status, _enroll_lock, 
+                                update_frame_cb=update_stream_frame)
 
     threading.Thread(target=run, daemon=True).start()
     return {"status": "started", "name": req.name}
@@ -190,6 +200,69 @@ def enroll_status():
     with _enroll_lock:
         return dict(_enroll_status)
 
+class WebEnrollRequest(BaseModel):
+    name: str
+    images: list[str]  # Base64 encoded images
+
+@app.post("/api/enroll/web")
+def enroll_web(req: WebEnrollRequest):
+    if len(req.images) < 1:
+        raise HTTPException(400, "At least 1 image is required")
+
+    import base64
+    import cv2
+    import numpy as np
+    from face_engine import FaceEngine
+    
+    engine = FaceEngine()
+    crops = []
+    
+    for count, b64_img in enumerate(req.images):
+        try:
+            if ',' in b64_img:
+                b64_img = b64_img.split(',', 1)[1]
+            img_data = base64.b64decode(b64_img)
+            nparr = np.frombuffer(img_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            face = engine.largest_face(frame)
+            if not face:
+                raise HTTPException(400, f"No face detected in capture #{count+1}")
+            crops.append(face.embedding)
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(400, f"Error processing image {count+1}: {e}")
+            
+    # Typically 3 captures. If fewer, duplicate the last capture's embedding to make 3 (for the (3, 512) DB schema)
+    while len(crops) < 3:
+        crops.append(crops[-1])
+        
+    emb_arr = np.stack(crops[:3]).astype(np.float32)
+
+    # Save to SQLite (db_sqlite)
+    sid = db.next_student_id()
+    db.save_student(sid, req.name, datetime.now().isoformat(timespec="seconds"), emb_arr)
+    
+    # Also save to legacy StudentDatabase (CSV/NPZ) for recognition pipeline
+    try:
+        legacy_db = StudentDatabase()
+        # StudentDatabase.enroll(name, embeddings_3) handles ID generation internally using its own logic
+        # But we want to keep IDs synced, so we manually update its dicts
+        legacy_db.students[sid] = {
+            "name":          req.name,
+            "enrolled_date": datetime.now().isoformat(timespec="seconds"),
+        }
+        legacy_db.embeddings[sid] = emb_arr
+        legacy_db.save()
+    except Exception as e:
+        print(f"Error saving to legacy database: {e}")
+
+    db.push_event("student_enrolled_web", {
+        "student_id": sid, "name": req.name
+    })
+
+    return {"status": "enrolled", "student_id": sid, "name": req.name}
 
 # ── Students ──────────────────────────────────────────────────────────────────
 

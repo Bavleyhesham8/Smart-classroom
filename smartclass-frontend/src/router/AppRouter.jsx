@@ -14,6 +14,7 @@ import TeacherDashboard from '../pages/teacher/Dashboard';
 import AdminDashboard from '../pages/admin/Dashboard';
 import ParentDashboard from '../pages/parent/Dashboard';
 import CompleteProfile from '../pages/CompleteProfile';
+import FullRegistration from '../pages/FullRegistration';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
@@ -28,8 +29,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/login" replace state={{ from: location }} />;
     }
 
-    // Force profile completion for parents
-    if (user.role === 'parent' && !profileCompleted && location.pathname !== '/complete-profile') {
+    // Force profile completion for parents (includes face capture and full registration)
+    if (user.role === 'parent' && !profileCompleted && !['/complete-profile', '/full-registration'].includes(location.pathname)) {
+        // Assume they start at complete-profile
         return <Navigate to="/complete-profile" replace />;
     }
 
@@ -48,6 +50,7 @@ const AppRouter = () => {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
+            <Route path="/full-registration" element={<ProtectedRoute><FullRegistration /></ProtectedRoute>} />
 
             {/* Teacher Routes */}
             <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherLayout /></ProtectedRoute>}>

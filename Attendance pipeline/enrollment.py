@@ -379,6 +379,152 @@ def run_enrollment():
     return None, None
 
 
+def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
+    """
+    Automated version of run_enrollment for web integration.
+    Does NOT use cv2.imshow or input().
+    Updates status_dict for frontend polling.
+    """
+    import cv2
+    import numpy as np
+    from face_engine import FaceEngine
+    from database import StudentDatabase
+    from config import CAM_INDEX, FRAME_W, FRAME_H, HOLD_FRAMES
+    from datetime import datetime
+
+    with lock:
+        status_dict.update({
+            "stage": "initializing",
+            "progress": 0,
+            "yaw": 0,
+            "pitch": 0,
+            "pose_ok": False,
+            "face_detected": False,
+            "label": "Initializing camera..."
+        })
+
+    try:
+        db = StudentDatabase()
+        face_engine = FaceEngine()
+        pose_est = HeadPoseEstimator(FRAME_W, FRAME_H)
+
+        cap = cv2.VideoCapture(CAM_INDEX)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        if not cap.isOpened():
+            with lock:
+                status_dict.update({"stage": "error", "detail": "Could not open camera"})
+            return
+
+        captured_embs = []
+        stage_idx = 0
+        hold_ctr = 0
+
+        while stage_idx < len(_STAGES):
+            # Check for cancellation
+            with lock:
+                if status_dict.get("stage") == "cancelled":
+                    break
+
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            frame = cv2.flip(frame, 1)
+            display = frame.copy()
+            face = face_engine.largest_face(frame)
+
+            yaw, pitch = None, None
+            pose_ok = False
+            face_bbox = None
+            kps = None
+
+            if face:
+                face_bbox = face.bbox
+                kps = face.kps
+                yaw, pitch = pose_est.estimate(face.kps)
+                if yaw is not None:
+                    pose_ok = _STAGES[stage_idx]["check"](yaw, pitch)
+
+            if pose_ok:
+                hold_ctr += 1
+            else:
+                hold_ctr = max(0, hold_ctr - 2)
+
+            # Update shared status
+            with lock:
+                status_dict.update({
+                    "stage": _STAGES[stage_idx]["key"],
+                    "label": _STAGES[stage_idx]["label"],
+                    "progress": int((hold_ctr / HOLD_FRAMES) * 100),
+                    "yaw": float(yaw) if yaw is not None else None,
+                    "pitch": float(pitch) if pitch is not None else None,
+                    "pose_ok": pose_ok,
+                    "face_detected": face is not None
+                })
+
+            # Stream annotated frame
+            if update_frame_cb:
+                # Reuse the _draw_overlay from the original enrollment.py
+                # Note: thumbs are empty here as we don't need them for headless web view
+                _draw_overlay(display, stage_idx, [],
+                              face_bbox, kps, yaw, pitch, hold_ctr, pose_ok)
+                _, jpeg = cv2.imencode('.jpg', display)
+                update_frame_cb(jpeg.tobytes())
+
+            if pose_ok and hold_ctr >= HOLD_FRAMES:
+                captured_embs.append(face.embedding.copy())
+                hold_ctr = 0
+                stage_idx += 1
+                with lock:
+                    status_dict["progress"] = 0
+
+        cap.release()
+
+        # Check final results
+        if len(captured_embs) == 3:
+            with lock:
+                status_dict.update({"stage": "saving", "label": "Checking for duplicates...", "progress": 100})
+            
+            emb_arr = np.stack(captured_embs).astype(np.float32)
+            is_dup, dup_sid, dup_name, dup_sim = db.check_duplicate(emb_arr)
+
+            if is_dup:
+                with lock:
+                    status_dict.update({
+                        "stage": "error",
+                        "detail": f"Duplicate face: {dup_name} ({dup_sid})",
+                        "error_type": "duplicate"
+                    })
+                return
+
+            import db_sqlite as sqldb
+            sid = db.enroll(name, emb_arr)
+            sqldb.save_student(sid, name, datetime.now().isoformat(timespec="seconds"), emb_arr)
+            sqldb.push_event("student_enrolled", {"student_id": sid, "name": name})
+
+            with lock:
+                status_dict.update({
+                    "stage": "done",
+                    "label": "Enrollment Complete!",
+                    "student_id": sid,
+                    "name": name
+                })
+        else:
+            with lock:
+                if status_dict.get("stage") != "cancelled":
+                    status_dict.update({"stage": "error", "detail": "Enrollment incomplete"})
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        with lock:
+            status_dict.update({"stage": "error", "detail": str(e)})
+
+
+
 if __name__ == "__main__":
     while True:
         sid, name = run_enrollment()
