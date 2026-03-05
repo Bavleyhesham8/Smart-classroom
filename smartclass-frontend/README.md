@@ -1,16 +1,69 @@
-# React + Vite
+# SmartClass AI Dashboard 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, premium SaaS dashboard for intelligent classroom monitoring, built with React, Tailwind CSS, shadcn/ui, and Framer Motion.
 
-Currently, two official plugins are available:
+## 🏗️ Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `smartclass-frontend/`: React + Vite application (Frontend)
+- `smartclass-backend/`: Node.js + Express mock server (Backend)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🚀 Getting Started
 
-## Expanding the ESLint configuration
+To run the full application, you need to start both the backend and the frontend servers.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 1. Start the Backend Server
+The backend handles authentication and provides mock data for students, attendance, and engagement.
+
+```bash
+cd smartclass-backend
+npm install
+npm start
+```
+*The backend will run on `http://localhost:5000`*
+
+### 2. Start the Frontend Application
+The frontend is the main dashboard interface.
+
+```bash
+cd smartclass-frontend
+npm install
+npm run dev
+```
+*The frontend will run on `http://localhost:5173` (or the next available port)*
+
+---
+
+## 🔐 Mock Credentials
+
+Use these credentials to explore the different dashboard roles:
+
+| Role | Email | Password |
+| :--- | :--- | :--- |
+| **Admin** | `admin@example.com` | `pass` |
+| **Teacher** | `teacher@example.com` | `pass` |
+| **Parent** | `parent@example.com` | `pass` |
+
+---
+
+## ✨ Features
+
+- **Premium UI**: Modern dark/light mode support with a clean, Apple-like aesthetic.
+- **Micro-Animations**: Smooth transitions and interactive elements using `framer-motion`.
+- **Advanced Visualization**: Interactive charts for attendance and engagement trends.
+- **Live Monitoring**: Real-time simulation of classroom activity.
+- **Role-Based Access**: Dedicated portals for Admins, Teachers, and Parents.
+- **Responsive Design**: Fully optimized for mobile, tablet, and desktop views.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: React 19 + Vite
+- **Styling**: Tailwind CSS v4
+- **Components**: shadcn/ui + Radix UI
+- **Icons**: Lucide React
+- **Animations**: Framer Motion
+- **Charts**: Recharts
+- **Backend**: Express.js
