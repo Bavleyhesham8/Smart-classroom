@@ -12,6 +12,7 @@ import Login from '../pages/Login';
 import TeacherDashboard from '../pages/teacher/Dashboard';
 import AdminDashboard from '../pages/admin/Dashboard';
 import ParentDashboard from '../pages/parent/Dashboard';
+import CompleteProfile from '../pages/CompleteProfile';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
@@ -34,6 +35,7 @@ const AppRouter = () => {
         <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
 
             {/* Teacher Routes */}
             <Route path="/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherLayout /></ProtectedRoute>}>

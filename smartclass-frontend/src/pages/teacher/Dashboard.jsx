@@ -34,7 +34,12 @@ import {
     ResponsiveContainer,
     LineChart,
     Line,
-    Legend
+    Legend,
+    Radar,
+    RadarChart,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis
 } from 'recharts';
 
 import { useAuth } from '../../context/AuthContext';
@@ -242,28 +247,44 @@ const TeacherDashboard = () => {
         { name: 'Distracted', students: students.filter(s => (s.engagement?.find(e => e.date === selectedDate)?.level || 0) < 40).length },
     ];
 
+    const radarData = [
+        { subject: 'Engagement', A: 95, fullMark: 100 },
+        { subject: 'Clarity', A: 90, fullMark: 100 },
+        { subject: 'Feedback Timing', A: 60, fullMark: 100 },
+        { subject: 'Empathy', A: 85, fullMark: 100 },
+        { subject: 'Pacing', A: 75, fullMark: 100 },
+    ];
+
     return (
         <div className="space-y-8 pb-12 overflow-x-hidden">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-xs font-bold uppercase tracking-wider border border-blue-200 dark:border-blue-500/30">
-                            {user?.subject || 'Mathematics'}
-                        </span>
-                        <span className="px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 text-xs font-bold uppercase tracking-wider border border-teal-200 dark:border-teal-500/30">
-                            {user?.classTarget || 'Grade 10'}
-                        </span>
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                <div className="flex items-center gap-5">
+                    <img
+                        src={user?.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Teacher'}`}
+                        className="w-20 h-20 rounded-2xl border-2 border-white dark:border-slate-800 shadow-lg object-cover bg-white"
+                        alt="Profile"
+                    />
+                    <div>
+                        <div className="flex items-center gap-3 mb-1">
+                            <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 text-[10px] font-bold uppercase tracking-widest border border-blue-200 dark:border-blue-500/30 shadow-sm">
+                                {user?.subject || 'Mathematics'}
+                            </span>
+                            <span className="px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-500/20 text-teal-700 dark:text-teal-400 text-[10px] font-bold uppercase tracking-widest border border-teal-200 dark:border-teal-500/30 shadow-sm">
+                                {user?.classTarget || 'Grade 10'}
+                            </span>
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-baseline gap-3">
+                            {user?.name || 'Mr. Teacher'}
+                            <span className="text-sm font-bold text-slate-400 tracking-normal uppercase">ID: TCH-{new Date().getFullYear()}</span>
+                        </h2>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 text-sm font-medium">
+                            <Calendar size={14} /> {format(new Date(), 'EEEE, MMMM do yyyy')}
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest ml-2 ring-1 ring-rose-500/20 animate-pulse shadow-sm">
+                                <Activity size={10} /> Live Monitoring Active
+                            </span>
+                        </p>
                     </div>
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-                        Class Command Center
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
-                        <Calendar size={14} /> {format(new Date(), 'EEEE, MMMM do yyyy')}
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold uppercase tracking-wider ml-2 ring-1 ring-rose-500/20 animate-pulse">
-                            <Activity size={10} /> Live Monitoring Active
-                        </span>
-                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -427,6 +448,69 @@ const TeacherDashboard = () => {
                     </div>
                 </motion.div>
             </div>
+
+            {/* AI Recommendations Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl p-8 rounded-3xl border border-teal-100 dark:border-teal-900 shadow-2xl relative overflow-hidden group"
+            >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 dark:bg-teal-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-transform group-hover:scale-110 duration-1000" />
+                <div className="flex items-center gap-3 mb-8 relative z-10">
+                    <div className="p-3 bg-gradient-to-br from-teal-400 to-blue-500 rounded-xl shadow-lg shadow-teal-500/30">
+                        <Activity className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            AI Recommendations for Me
+                        </h3>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Based on recent student engagement and feedback</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center relative z-10">
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                                <PolarGrid stroke="#e2e8f0" strokeOpacity={0.5} />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} />
+                                <Radar name="My Performance" dataKey="A" stroke="#0d9488" fill="#14b8a6" fillOpacity={0.3} />
+                                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }} />
+                            </RadarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-6">
+                        <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 relative overflow-hidden backdrop-blur-sm">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 rounded-l-2xl" />
+                            <h4 className="text-emerald-800 dark:text-emerald-400 font-black mb-3 text-sm uppercase tracking-widest flex items-center gap-2">
+                                <CheckCircle2 size={16} /> Strengths
+                            </h4>
+                            <ul className="space-y-3">
+                                {user?.aiRecommendations?.strengths?.map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
+                                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="bg-amber-50/50 dark:bg-amber-900/10 p-6 rounded-2xl border border-amber-100 dark:border-amber-900/50 relative overflow-hidden backdrop-blur-sm">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500 rounded-l-2xl" />
+                            <h4 className="text-amber-800 dark:text-amber-400 font-black mb-3 text-sm uppercase tracking-widest flex items-center gap-2">
+                                <Activity size={16} /> Areas for Improvement
+                            </h4>
+                            <ul className="space-y-3">
+                                {user?.aiRecommendations?.weaknesses?.map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
+                                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
 
             {/* Students List Section */}
             <motion.div

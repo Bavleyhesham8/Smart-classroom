@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, LayoutDashboard, ShieldCheck, UserCircle, LogOut } from 'lucide-react';
+import { Menu, LayoutDashboard, ShieldCheck, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 const menuItems = [
     { text: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin/dashboard' },
@@ -108,12 +109,7 @@ const AdminLayout = () => {
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <div className="hidden sm:flex items-center text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {user?.name || "Administrator"}
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300">
-                            <UserCircle size={20} />
-                        </div>
+                        <ProfileDropdown user={user} logout={logout} />
                     </div>
                 </header>
 

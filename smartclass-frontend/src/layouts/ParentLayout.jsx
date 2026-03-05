@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, LayoutDashboard, UserCircle, LogOut } from 'lucide-react';
+import { Menu, LayoutDashboard } from 'lucide-react';
 import { cn } from '../lib/utils';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 const ParentLayout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
     const navItems = [
         { name: 'Dashboard', path: '/parent/dashboard' }
@@ -58,36 +58,7 @@ const ParentLayout = () => {
 
                         {/* Right side Profile & Mobile Toggle */}
                         <div className="flex items-center gap-4">
-                            <div className="hidden sm:flex items-center text-sm font-medium text-slate-700 dark:text-slate-300">
-                                {user?.name || "Parent User"}
-                            </div>
-
-                            {/* Profile Dropdown */}
-                            <div className="relative">
-                                <button
-                                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                                    className="pt-1 focus:outline-none"
-                                >
-                                    <UserCircle size={28} className="text-slate-600 dark:text-slate-400 hover:text-teal-600 transition-colors" />
-                                </button>
-
-                                {profileMenuOpen && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setProfileMenuOpen(false)}></div>
-                                        <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 z-50 overflow-hidden transform opacity-100 scale-100 transition-all">
-                                            <div className="py-1">
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 flex items-center"
-                                                >
-                                                    <LogOut size={16} className="mr-2" />
-                                                    Sign out
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+                            <ProfileDropdown user={user} logout={logout} />
 
                             {/* Mobile menu button */}
                             <div className="flex items-center md:hidden">

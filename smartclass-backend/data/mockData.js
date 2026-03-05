@@ -25,6 +25,8 @@ const mockStudents = [
       handRaises: 15,
       engagement_avg: 88
     },
+    parentContact: { name: 'Mrs. Johnson', phone: '+1 (555) 123-4567', email: 'parent@example.com' },
+    feeStatus: { status: 'Paid', progress: 100, history: [{ date: '2026-02-01', amount: 1500, status: 'Cleared' }] },
     images: [
       "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200",
       "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=200&h=200",
@@ -50,6 +52,8 @@ const mockStudents = [
       handRaises: 2,
       engagement_avg: 45
     },
+    parentContact: { name: 'Mr. Smith', phone: '+1 (555) 987-6543', email: 'smith@example.com' },
+    feeStatus: { status: 'Unpaid', progress: 40, history: [{ date: '2026-01-01', amount: 1500, status: 'Cleared' }, { date: '2026-03-01', amount: 1500, status: 'Pending' }] },
     images: [
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200",
       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&h=200",
@@ -69,6 +73,8 @@ const mockStudents = [
       handRaises: 8,
       engagement_avg: 76
     },
+    parentContact: { name: 'Ms. Davis', phone: '+1 (555) 246-8101', email: 'davis@example.com' },
+    feeStatus: { status: 'Paid', progress: 100, history: [{ date: '2026-02-01', amount: 1500, status: 'Cleared' }] },
     images: [
       "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&h=200",
       "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200",
@@ -78,7 +84,11 @@ const mockStudents = [
 ];
 
 const mockUsers = [
-  { email: 'teacher@example.com', password: 'pass', role: 'teacher', name: 'Mr. Teacher', subject: 'Mathematics', classTarget: 'Grade 10 - Section A' },
+  {
+    email: 'teacher@example.com', password: 'pass', role: 'teacher', name: 'Mr. Teacher', subject: 'Mathematics', classTarget: 'Grade 10 - Section A',
+    salaryStatus: { status: 'Paid', nextPayment: '2026-03-31', history: [{ month: 'Feb 2026', amount: 4500, paid: true }] },
+    aiRecommendations: { strengths: ['Excellent engagement (4.9/5)', 'Clear explanations in Calculus'], weaknesses: ['Needs improvement in assignment feedback speed'] }
+  },
   { email: 'parent@example.com', password: 'pass', role: 'parent', name: 'Mrs. Parent', childId: 'S001' },
   { email: 'admin@example.com', password: 'pass', role: 'admin', name: 'Admin User' }
 ];
@@ -101,8 +111,8 @@ const mockTeacherData = {
 };
 
 const mockReports = [
-  { id: 'R001', studentName: 'Alice Johnson', teacherName: 'Mr. Teacher', subject: 'Math', date: '2026-03-01', content: 'Alice is showing great progress in Algebra.', status: 'Sent' },
-  { id: 'R002', studentName: 'Bob Smith', teacherName: 'Mr. Teacher', subject: 'Math', date: '2026-03-02', content: 'Bob needs to focus on his late submissions.', status: 'Pending Approval' }
+  { id: 'R001', studentName: 'Alice Johnson', teacherName: 'Mr. Teacher', subject: 'Math', date: '2026-03-01', content: 'Alice is showing great progress in Algebra.', status: 'Sent', auditLog: [{ date: '2026-03-01T10:00:00Z', action: 'Submitted by Teacher' }, { date: '2026-03-02T09:00:00Z', action: 'Approved by Admin' }] },
+  { id: 'R002', studentName: 'Bob Smith', teacherName: 'Mr. Teacher', subject: 'Math', date: '2026-03-02', content: 'Bob needs to focus on his late submissions.', status: 'Pending Approval', auditLog: [{ date: '2026-03-02T14:30:00Z', action: 'Submitted by Teacher' }] }
 ];
 
 module.exports = {

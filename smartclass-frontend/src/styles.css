@@ -28,7 +28,7 @@
 
 @layer base {
   :root {
-    --background: #ffffff;
+    --background: #f8fafc;
     --foreground: #020617;
     --card: #ffffff;
     --card-foreground: #020617;
@@ -47,28 +47,28 @@
     --border: #e2e8f0;
     --input: #e2e8f0;
     --ring: #020617;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
 
   .dark {
-    --background: #020617;
+    --background: #0f172a;
     --foreground: #f8fafc;
-    --card: #020617;
+    --card: #1e293b;
     --card-foreground: #f8fafc;
-    --popover: #020617;
+    --popover: #1e293b;
     --popover-foreground: #f8fafc;
     --primary: #f8fafc;
     --primary-foreground: #0f172a;
-    --secondary: #1e293b;
+    --secondary: #334155;
     --secondary-foreground: #f8fafc;
-    --muted: #1e293b;
+    --muted: #334155;
     --muted-foreground: #94a3b8;
-    --accent: #1e293b;
+    --accent: #334155;
     --accent-foreground: #f8fafc;
     --destructive: #7f1d1d;
     --destructive-foreground: #f8fafc;
-    --border: #1e293b;
-    --input: #1e293b;
+    --border: #334155;
+    --input: #334155;
     --ring: #cbd5e1;
   }
 }
@@ -76,13 +76,22 @@
 @layer base {
 
   html,
-  body,
-  #root {
+  body {
     background-color: var(--background) !important;
     color: var(--foreground) !important;
     filter: none !important;
     backdrop-filter: none !important;
     -webkit-filter: none !important;
+    min-height: 100vh;
+  }
+
+  #root {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at center, var(--border) 1px, transparent 1.5px);
+    background-size: 24px 24px;
+    background-position: 0 0;
+    background-attachment: fixed;
   }
 
   * {

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, LayoutDashboard, Users, UserCircle, LogOut } from 'lucide-react';
+import { Menu, LayoutDashboard, Users, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
+import ProfileDropdown from '../components/ProfileDropdown';
 
 const menuItems = [
     { text: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/teacher/dashboard' },
@@ -106,12 +107,7 @@ const TeacherLayout = () => {
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <div className="hidden sm:flex items-center text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {user?.name || "Teacher"}
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center text-teal-700 dark:text-teal-400">
-                            <UserCircle size={20} />
-                        </div>
+                        <ProfileDropdown user={user} logout={logout} />
                     </div>
                 </header>
 

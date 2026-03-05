@@ -24,21 +24,28 @@ import {
     Download,
     XCircle,
     GraduationCap,
-    Presentation
+    Presentation,
+    Info,
+    Check,
+    X,
+    UserCircle2
 } from 'lucide-react';
+
+import { useAuth } from '../../context/AuthContext';
 
 import StudentTable from '../../components/StudentTable';
 import { cn } from '../../lib/utils';
 import { exportToCSV } from '../../utils/csvExport';
 
 const AdminDashboard = () => {
+    const { pendingUsers, approveUser, rejectUser, reports, updateReportStatus } = useAuth();
     const [students, setStudents] = useState([]);
     const [teachers, setTeachers] = useState([]);
-    const [reports, setReports] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('overview');
-    const [selectedEntity, setSelectedEntity] = useState(null); // For detail view
+    const [selectedEntity, setSelectedEntity] = useState(null);
     const [isValidateModalOpen, setIsValidateModalOpen] = useState(false);
+    const [isInvestigateModalOpen, setIsInvestigateModalOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState(null);
 
     useEffect(() => {
@@ -47,12 +54,10 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [sRes, rRes] = await Promise.all([
-                axios.get('/api/students'),
-                axios.get('/api/reports')
+            const [sRes] = await Promise.all([
+                axios.get('/api/students')
             ]);
             setStudents(sRes.data);
-            setReports(rRes.data);
 
             // Mocking teacher list from mockUsers for now
             const mockTeachers = [
@@ -67,10 +72,8 @@ const AdminDashboard = () => {
 
     const handleValidateReport = async (reportId) => {
         try {
-            await axios.post('/api/reports/validate', { reportId });
-            alert('Report validated and sent to parent!');
+            updateReportStatus(reportId, 'Approved', 'Approved by Admin & Pushed to Parent');
             setIsValidateModalOpen(false);
-            setReports(reports.filter(r => r.id !== reportId));
         } catch (err) {
             console.error("Validation failed", err);
         }
@@ -80,6 +83,7 @@ const AdminDashboard = () => {
         { id: 'overview', label: 'Overview', icon: Monitor },
         { id: 'teachers', label: 'Teachers', icon: Presentation },
         { id: 'students', label: 'Students', icon: GraduationCap },
+        { id: 'pending', label: 'Pending Users', icon: UserCircle2 },
         { id: 'reports', label: 'Reports Inbox', icon: FileText },
     ];
 
@@ -238,15 +242,23 @@ const AdminDashboard = () => {
                                 </h3>
                                 <p className="text-sm text-slate-500 font-medium">Search and manage performance insights.</p>
                             </div>
-                            <div className="relative w-full md:w-80">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder={`Search ${activeTab}...`}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
-                                />
+                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                <div className="relative w-full md:w-80">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder={`Search ${activeTab}...`}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => exportToCSV(activeTab === 'teachers' ? teachers : students, format(new Date(), 'yyyy-MM-dd'))}
+                                    className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm shrink-0"
+                                >
+                                    <Download size={20} />
+                                </button>
                             </div>
                         </div>
                         <div className="overflow-x-auto">
@@ -347,7 +359,23 @@ const AdminDashboard = () => {
                                         </div>
                                         <div className="p-8 rounded-[2rem] bg-teal-50 dark:bg-teal-500/10 border border-teal-100 dark:border-teal-500/20">
                                             <p className="text-xs font-bold text-teal-600 mb-2">Performance Index</p>
-                                            <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.experience || '88%'}</p>
+                                            <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.experience || `${selectedEntity.performance?.engagement_avg || 88}%`}</p>
+                                        </div>
+                                        <div className="sm:col-span-2 p-8 rounded-[2rem] bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">{activeTab === 'teachers' ? 'Salary Status' : 'Fee Status'}</p>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn("w-3 h-3 rounded-full", (selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid') === 'Paid' ? 'bg-emerald-500' : 'bg-amber-500')} />
+                                                    <p className="text-xl font-black text-slate-900 dark:text-white">
+                                                        {selectedEntity.feeStatus?.status || selectedEntity.salaryStatus?.status || 'Paid'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {(selectedEntity.feeStatus?.status === 'Unpaid' || selectedEntity.salaryStatus?.status === 'Unpaid') && (
+                                                <button className="px-6 py-3 bg-white dark:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold shadow-sm border border-slate-200 dark:border-slate-600 hover:border-blue-500 transition-colors flex items-center gap-2">
+                                                    <Send size={16} className="text-blue-500" /> Send Reminder
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -370,6 +398,47 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {activeTab === 'pending' && (
+                    <motion.div
+                        key="pending"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+                    >
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Pending User Approvals</h3>
+                                <p className="text-sm text-slate-500 font-medium">Review new Parent signup requests.</p>
+                            </div>
+                            <span className="px-4 py-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full text-xs font-black uppercase tracking-widest ring-1 ring-amber-500/20">
+                                {pendingUsers.length} Requests
+                            </span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {pendingUsers.length === 0 ? (
+                                <div className="p-8 text-center text-slate-500 font-bold">No pending requests.</div>
+                            ) : pendingUsers.map((u) => (
+                                <div key={u.id} className="p-8 flex items-center justify-between gap-6 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                                    <div>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white">{u.parentName}</h4>
+                                        <p className="text-sm text-slate-500 border-l-2 border-blue-500 pl-3 mt-1 italic">Child: {u.childName} ({u.childGrade})</p>
+                                        <p className="text-xs text-slate-400 mt-2 font-mono">{u.parentEmail} • {u.date}</p>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => rejectUser(u.id)} className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all">
+                                            Deny
+                                        </button>
+                                        <button onClick={() => approveUser(u.id)} className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2">
+                                            <Check size={16} /> Approve
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </motion.div>
                 )}
@@ -410,20 +479,116 @@ const AdminDashboard = () => {
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Submitted by {report.teacherName}</p>
                                     </div>
                                     <div className="flex gap-3 shrink-0">
-                                        <button className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl hover:text-rose-600 transition-colors">
-                                            <XCircle size={24} />
+                                        <button
+                                            onClick={() => { setSelectedReport(report); setIsInvestigateModalOpen(true); }}
+                                            className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-slate-200 transition-all flex items-center gap-2"
+                                        >
+                                            <Search size={16} /> Investigate
                                         </button>
                                         <button
                                             onClick={() => { setSelectedReport(report); setIsValidateModalOpen(true); }}
                                             className="px-6 py-3 bg-teal-600 text-white rounded-2xl font-black uppercase tracking-[.15em] text-xs hover:bg-teal-700 shadow-xl shadow-teal-500/20 flex items-center gap-2 transition-all"
                                         >
-                                            <CheckCircle2 size={18} /> Validate & Send
+                                            <CheckCircle2 size={16} /> Approve & Send
                                         </button>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Investigate Modal */}
+            <AnimatePresence>
+                {isInvestigateModalOpen && selectedReport && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-2xl p-10 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex justify-between items-center mb-10">
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+                                    <Search className="text-blue-600" size={28} />
+                                    Investigation: {selectedReport.studentName}
+                                </h3>
+                                <button onClick={() => setIsInvestigateModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <XCircle size={32} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-8">
+                                <div className="p-6 rounded-[2rem] bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+                                    <h4 className="text-xs font-black text-amber-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <AlertCircle size={16} /> Reported Incident
+                                    </h4>
+                                    <p className="text-slate-700 dark:text-slate-300 font-medium italic">
+                                        "{selectedReport.content}"
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-[.2em] mb-4">Evidence & Context</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Teacher</p>
+                                            <p className="font-bold text-slate-900 dark:text-white">{selectedReport.teacherName}</p>
+                                        </div>
+                                        <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Subject / Time</p>
+                                            <p className="font-bold text-slate-900 dark:text-white">{selectedReport.subject} • {selectedReport.date}</p>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        placeholder="Add administrator notes..."
+                                        className="w-full h-32 mt-4 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-sm focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all resize-none"
+                                    />
+                                </div>
+
+                                {selectedReport.auditLog && (
+                                    <div>
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-[.2em] mb-4">Audit Log</h4>
+                                        <div className="space-y-3">
+                                            {selectedReport.auditLog?.map((log, i) => (
+                                                <div key={i} className="flex items-center gap-4 text-sm bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                    <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                                                    <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">{format(new Date(log.date), 'MMM d, h:mm a')}</span>
+                                                    <span className="font-medium text-slate-700 dark:text-slate-300">{log.action}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4 pt-4">
+                                    <button
+                                        onClick={() => {
+                                            updateReportStatus(selectedReport.id, 'Investigating', 'Admin requested more info');
+                                            setIsInvestigateModalOpen(false);
+                                        }}
+                                        className="flex-1 py-4 rounded-2xl font-black uppercase tracking-[.1em] text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-all border border-slate-200 dark:border-slate-700"
+                                    >
+                                        Flag for Review
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const studentEntity = students.find(s => s.name === selectedReport.studentName);
+                                            if (studentEntity) {
+                                                setSelectedEntity(studentEntity);
+                                                setActiveTab('students');
+                                            }
+                                            setIsInvestigateModalOpen(false);
+                                        }}
+                                        className="flex-1 py-4 rounded-2xl font-black uppercase tracking-[.1em] text-xs bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-500/20 transition-all"
+                                    >
+                                        Jump to Profile
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
 

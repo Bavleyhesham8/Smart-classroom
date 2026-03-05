@@ -36,7 +36,9 @@ import {
     Star,
     AlertCircle,
     ArrowRight,
-    Clock
+    Clock,
+    Copy,
+    XCircle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Notification from '../../components/Notification';
@@ -48,6 +50,7 @@ const ParentDashboard = () => {
     const [reports, setReports] = useState([]);
     const [teacherData, setTeacherData] = useState(null);
     const [selectedDate, setSelectedDate] = useState(new Date());
+    const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
 
     useEffect(() => {
         fetchChildData();
@@ -354,7 +357,10 @@ const ParentDashboard = () => {
                                 </div>
                             ))}
                         </div>
-                        <button className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all group">
+                        <button
+                            onClick={() => setIsCalendarModalOpen(true)}
+                            className="w-full mt-4 flex items-center justify-center gap-2 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all group"
+                        >
                             View Full Calendar <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                         </button>
                     </div>
@@ -379,9 +385,17 @@ const ParentDashboard = () => {
                                             <h4 className="font-bold text-slate-900 dark:text-white">{report.subject} Report</h4>
                                             <p className="text-xs text-slate-400 mt-0.5">By {report.teacherName} • {report.date}</p>
                                         </div>
-                                        <span className="p-2 bg-white dark:bg-slate-900 rounded-lg text-blue-600 shadow-sm border border-slate-100 dark:border-slate-800 group-hover:scale-110 transition-transform">
-                                            <FileText size={16} />
-                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigator.clipboard.writeText(`Report for ${student.name} - ${report.subject}:\n${report.content}`);
+                                                import('react-hot-toast').then(mod => mod.default.success('Report copied to clipboard!'));
+                                            }}
+                                            className="p-2 bg-white dark:bg-slate-900 rounded-lg text-blue-600 hover:text-teal-600 shadow-sm border border-slate-100 dark:border-slate-800 hover:scale-110 transition-transform cursor-pointer focus:outline-none"
+                                            title="Copy to clipboard"
+                                        >
+                                            <Copy size={16} />
+                                        </button>
                                     </div>
                                     <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed italic">
                                         "{report.content}"
@@ -422,6 +436,61 @@ const ParentDashboard = () => {
 
                 </div>
             </div>
+
+            {/* Calendar Modal */}
+            <AnimatePresence>
+                {isCalendarModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-slate-900 w-full max-w-4xl rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-2xl p-10 max-h-[90vh] overflow-y-auto"
+                        >
+                            <div className="flex justify-between items-center mb-8">
+                                <h3 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3 tracking-tight">
+                                    <CalendarIcon className="text-blue-600" size={32} />
+                                    Academic Calendar
+                                </h3>
+                                <button onClick={() => setIsCalendarModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20">
+                                    <XCircle size={32} />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-center">
+                                    <Calendar
+                                        onChange={setSelectedDate}
+                                        value={selectedDate}
+                                        className="border-0 bg-transparent font-sans text-slate-900 dark:text-white !w-full"
+                                    />
+                                </div>
+                                <div className="space-y-6">
+                                    <h4 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                        <Clock className="text-teal-600" size={20} /> Schedule for {format(selectedDate, 'MMMM do, yyyy')}
+                                    </h4>
+
+                                    {teacherData?.schedule ? (
+                                        <div className="space-y-4">
+                                            {teacherData.schedule.map((slot, i) => (
+                                                <div key={i} className="flex gap-4 items-center p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+                                                    <span className="font-bold text-slate-400 text-sm whitespace-nowrap">{slot.time}</span>
+                                                    <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
+                                                    <span className="font-bold text-slate-900 dark:text-white text-lg">{slot.monday}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 text-center text-slate-500 dark:text-slate-400 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl font-medium">
+                                            No classes scheduled for this day.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
