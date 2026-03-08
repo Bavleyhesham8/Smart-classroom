@@ -1,0 +1,3 @@
+student_id,name,status,first_seen,last_seen,duration_min
+S004,be,Present,12:08:44,12:09:30,0.8
+S003,gg,Present,12:08:57,12:09:34,0.6
