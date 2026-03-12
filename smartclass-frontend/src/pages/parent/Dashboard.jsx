@@ -202,11 +202,20 @@ const ParentDashboard = () => {
                             <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-blue-600 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
                             <div className="relative w-32 h-32 rounded-3xl bg-slate-800 p-2 border border-white/10 shadow-2xl overflow-hidden">
                                 <img
-                                    src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`}
+                                    src={student.profile_image_b64 ? 
+                                        (student.profile_image_b64.startsWith('data:') ? student.profile_image_b64 : `data:image/jpeg;base64,${student.profile_image_b64}`) : 
+                                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}`}
                                     alt={student.name}
                                     className="w-full h-full object-cover rounded-2xl bg-slate-900"
                                 />
                             </div>
+                            <button 
+                                onClick={() => navigate('/complete-profile')}
+                                className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-blue-600 hover:scale-110 transition-transform cursor-pointer"
+                                title="Change Profile Photo"
+                            >
+                                <Camera size={18} />
+                            </button>
                         </div>
                         <div className="text-center md:text-left space-y-2">
                             <h2 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">

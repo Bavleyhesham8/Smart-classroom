@@ -23,7 +23,8 @@ import {
     BookOpen,
     Clock,
     CheckCircle2,
-    XCircle
+    XCircle,
+    ShieldAlert
 } from 'lucide-react';
 import {
     BarChart,
@@ -162,6 +163,22 @@ const TeacherDashboard = () => {
     const [selectedStudentForReport, setSelectedStudentForReport] = useState(null);
     const [reportContent, setReportContent] = useState('');
     const [expandedLesson, setExpandedLesson] = useState(0);
+    const [activeStrangerAlerts, setActiveStrangerAlerts] = useState([]);
+
+    useEffect(() => {
+        // WebSocket for Real-time alerts
+        const ws = new WebSocket(`ws://${window.location.host}/ws/events`);
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'stranger_alert') {
+                setActiveStrangerAlerts(prev => [...prev, data.payload]);
+                toast.error("SECURITY ALERT: Unknown person detected!", { duration: 6000 });
+            }
+        };
+
+        return () => ws.close();
+    }, []);
 
     useEffect(() => {
         fetchStudents();
@@ -285,6 +302,42 @@ const TeacherDashboard = () => {
 
     return (
         <div className="space-y-8 pb-12 overflow-x-hidden">
+            {/* Stranger Alert Banner */}
+            <AnimatePresence>
+                {activeStrangerAlerts.map((alert, idx) => (
+                    <motion.div
+                        key={idx}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="bg-rose-600 text-white px-6 py-4 rounded-2xl flex items-center justify-between shadow-2xl shadow-rose-500/30 border-2 border-rose-400/50 mb-6"
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/20 p-2 rounded-xl animate-pulse">
+                                <ShieldAlert size={24} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black uppercase tracking-widest">Security Alert: Unknown Person</p>
+                                <p className="text-xs font-bold opacity-90">An unidentified individual was detected in the scanning zone. Please verify if this is a known visitor.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => setActiveStrangerAlerts(prev => prev.filter((_, i) => i !== idx))}
+                                className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                            >
+                                Dismiss
+                            </button>
+                            <button 
+                                onClick={() => toast.success("Feedback sent to admin.")}
+                                className="px-4 py-2 bg-white text-rose-600 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
+                            >
+                                It's a Parent
+                            </button>
+                        </div>
+                    </motion.div>
+                ))}
+            </AnimatePresence>
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                 <div className="flex items-center gap-5">

@@ -86,18 +86,30 @@ const CompleteProfile = () => {
         setIsPolling(false);
     };
 
-    const handleComplete = (studentId) => {
-        // 1. Immediately link the enrolled student to the parent account
-        if (user && studentId) {
-            const updatedUser = { ...user, childId: studentId, isNewUser: false };
-            localStorage.setItem('smartclass_user', JSON.stringify(updatedUser));
-            if (setUser) setUser(updatedUser);
+    const handleComplete = async (studentId) => {
+        // 1. Persist the link to the backend
+        if (user?.email && studentId) {
+            try {
+                await fetch('/api/users/link-child', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: user.email, child_id: studentId })
+                });
+                
+                // 2. Update local state
+                const updatedUser = { ...user, childId: studentId, isNewUser: false };
+                localStorage.setItem('smartclass_user', JSON.stringify(updatedUser));
+                if (setUser) setUser(updatedUser);
+            } catch (err) {
+                console.error("Failed to persist linkage", err);
+                toast.error("Profile saved locally, but server link failed.");
+            }
         }
 
-        // 2. Mark profile as complete
+        // 3. Mark profile as complete in Zustand
         setProfileCompleted(true);
 
-        // 3. Show success and navigate to dashboard
+        // 4. Show success and navigate to dashboard
         toast.success("Face Profile Created! Redirecting...", {
             duration: 3000,
             icon: '🎉',

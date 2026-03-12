@@ -102,6 +102,12 @@ export const AuthProvider = ({ children }) => {
 
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setUser(userData);
+            
+            // Sync theme preference from DB
+            if (userData.theme_preference) {
+                store.initTheme(userData.theme_preference);
+            }
+            
             return { success: true, role: userData.role };
         } catch (error) {
             console.error('Login error:', error);

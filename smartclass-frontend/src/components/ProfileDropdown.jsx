@@ -46,7 +46,7 @@ const ProfileDropdown = ({ user, logout }) => {
     };
 
     const toggleTheme = () => {
-        setTheme(isDark ? 'light' : 'dark');
+        setTheme(isDark ? 'light' : 'dark', user?.email);
     };
 
     // ── Edit Photo Modal Logic ──

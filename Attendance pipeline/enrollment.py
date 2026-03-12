@@ -498,7 +498,7 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         # Check final results
         if len(captured_embs) == 3:
             with lock:
-                status_dict.update({"stage": "saving", "label": "Checking for duplicates...", "progress": 100})
+                status_dict.update({"stage": "saving", "label": "Registering in database...", "progress": 100})
             
             emb_arr = np.stack(captured_embs).astype(np.float32)
             is_dup, dup_sid, dup_name, dup_sim = db.check_duplicate(emb_arr)
@@ -512,10 +512,31 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
                     })
                 return
 
-            import db_sqlite as sqldb
-            sid = db.enroll(name, emb_arr)
-            sqldb.save_student(sid, name, datetime.now().isoformat(timespec="seconds"), emb_arr)
-            sqldb.push_event("student_enrolled", {"student_id": sid, "name": name})
+            # Save using SQLAlchemy V2
+            from database_v2 import SessionLocal
+            import models_v2 as models
+            
+            sid = db.enroll(name, emb_arr) # Internal CV-engine enrollment
+            
+            with SessionLocal() as session:
+                new_student = models.Student(
+                    student_id=sid,
+                    name=name,
+                    profile_image_b64="", # Will be updated if thumb captured
+                    enrolled_date=datetime.now()
+                )
+                session.add(new_student)
+                
+                # Add embeddings
+                for i, angle in enumerate(["front", "right", "left"]):
+                    db_emb = models.FaceEmbedding(
+                        student_id=sid,
+                        embedding=captured_embs[i].tobytes(),
+                        angle=angle
+                    )
+                    session.add(db_emb)
+                
+                session.commit()
 
             with lock:
                 status_dict.update({

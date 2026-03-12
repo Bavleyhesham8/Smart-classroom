@@ -6,13 +6,24 @@ const useStore = create(
         (set, get) => ({
             // ── Theme ──
             theme: 'light',
-            setTheme: (t) => {
+            setTheme: async (t, email = null) => {
                 set({ theme: t });
                 if (t === 'dark') document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
+                
+                // If email is provided, persist to database
+                if (email) {
+                    try {
+                        const axios = (await import('axios')).default;
+                        await axios.patch('/api/users/theme', { email, theme: t });
+                    } catch (e) {
+                        console.error("Failed to persist theme", e);
+                    }
+                }
             },
-            initTheme: () => {
-                const t = get().theme;
+            initTheme: (forcedTheme = null) => {
+                const t = forcedTheme || get().theme;
+                if (forcedTheme) set({ theme: forcedTheme });
                 if (t === 'dark') document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
             },

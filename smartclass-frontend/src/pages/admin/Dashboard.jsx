@@ -30,7 +30,9 @@ import {
     Info,
     Check,
     X,
-    UserCircle2
+    UserCircle2,
+    ShieldAlert,
+    Eye
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
@@ -51,6 +53,34 @@ const AdminDashboard = () => {
     const [isRefuseModalOpen, setIsRefuseModalOpen] = useState(false);
     const [refuseReason, setRefuseReason] = useState('');
     const [selectedReport, setSelectedReport] = useState(null);
+    const [alerts, setAlerts] = useState([]);
+    const [activeStrangerAlerts, setActiveStrangerAlerts] = useState([]);
+    const [pendingChanges, setPendingChanges] = useState([]);
+
+    useEffect(() => {
+        // WebSocket for Real-time alerts
+        const ws = new WebSocket(`ws://${window.location.host}/ws/events`);
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'stranger_alert') {
+                setActiveStrangerAlerts(prev => [data.payload, ...prev]);
+                toast.error("SYSTEM ALERT: New Unidentified Person Detected", { icon: '🚨' });
+                fetchAlerts();
+            }
+        };
+
+        return () => ws.close();
+    }, []);
+
+    const fetchAlerts = async () => {
+        try {
+            const res = await axios.get('/api/alerts');
+            setAlerts(res.data);
+        } catch (err) {
+            console.error("Failed to fetch alerts", err);
+        }
+    };
 
     useEffect(() => {
         fetchData();
@@ -58,10 +88,12 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [sRes] = await Promise.all([
-                axios.get('/api/students')
+            const [sRes, changesRes] = await Promise.all([
+                axios.get('/api/students'),
+                axios.get('/api/changes/pending').catch(() => ({ data: [] }))
             ]);
             setStudents(sRes.data);
+            setPendingChanges(changesRes.data || []);
 
             const mockTeachers = [
                 {
@@ -101,12 +133,53 @@ const AdminDashboard = () => {
         setSelectedReport(null);
     };
 
+    const handleApproveChange = async (id) => {
+        try {
+            await axios.post(`/api/changes/${id}/approve`);
+            setPendingChanges(prev => prev.filter(c => c.id !== id));
+            toast.success("Change approved and applied! Audit logged.");
+        } catch (e) {
+            toast.error("Failed to approve change.");
+        }
+    };
+
+    const handleRejectChange = async (id) => {
+        try {
+            await axios.post(`/api/changes/${id}/reject`);
+            setPendingChanges(prev => prev.filter(c => c.id !== id));
+            toast.success("Change request rejected.");
+        } catch (e) {
+            toast.error("Failed to reject change.");
+        }
+    };
+
+    const handleDeleteEntity = async (id, type) => {
+        if (!window.confirm(`Are you sure you want to permanently remove this ${type === 'teachers' ? 'Teacher' : 'Student'} from the system?`)) return;
+        try {
+            if (type === 'teachers') {
+                if (!id.toString().startsWith('T')) {
+                    await axios.delete(`/api/teacher/${id}`);
+                }
+                setTeachers(prev => prev.filter(t => t.id !== id));
+            } else {
+                await axios.delete(`/api/students/${id}`);
+                setStudents(prev => prev.filter(s => s.student_id !== id && s.id !== id));
+            }
+            setSelectedEntity(null);
+            toast.success(`${type === 'teachers' ? 'Teacher' : 'Student'} removed successfully.`);
+        } catch (e) {
+            toast.error(`Failed to remove from database. They might have related records.`);
+        }
+    };
+
     const tabs = [
         { id: 'overview', label: 'Overview', icon: Monitor },
         { id: 'teachers', label: 'Teachers', icon: Presentation },
         { id: 'students', label: 'Students', icon: GraduationCap },
         { id: 'pending', label: 'Pending Users', icon: UserCircle2 },
+        { id: 'changes', label: 'Change Approvals', icon: CheckCircle2 },
         { id: 'reports', label: 'Reports Inbox', icon: FileText },
+        { id: 'alerts', label: 'Alerts Inbox', icon: ShieldAlert },
     ];
 
     // Warning System Logic
@@ -351,7 +424,13 @@ const AdminDashboard = () => {
                                         {selectedEntity.name[0]}
                                     </div>
                                     <h3 className="text-3xl font-black text-slate-900 dark:text-white">{selectedEntity.name}</h3>
-                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">{activeTab === 'teachers' ? 'Faculty Member' : 'Enrolled Student'}</p>
+                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2 mb-6">{activeTab === 'teachers' ? 'Faculty Member' : 'Enrolled Student'}</p>
+                                    <button 
+                                        onClick={() => handleDeleteEntity(selectedEntity.id || selectedEntity.student_id, activeTab)}
+                                        className="px-6 py-2.5 bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black uppercase tracking-[.15em] text-[10px] hover:bg-rose-200 dark:hover:bg-rose-500/20 transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-[200px]"
+                                    >
+                                        <X size={16} /> Remove from DB
+                                    </button>
                                 </div>
 
                                 <div className="space-y-4">
@@ -592,6 +671,117 @@ const AdminDashboard = () => {
                                     )}
                                 </div>
                             ))}
+                        </div>
+                    </motion.div>
+                )}
+                {activeTab === 'changes' && (
+                    <motion.div
+                        key="changes"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+                    >
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Schedule & Curriculum Approvals</h3>
+                                <p className="text-sm text-slate-500 font-medium">Review Teacher edits to class schedules and lesson plans.</p>
+                            </div>
+                            <span className="px-4 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full text-xs font-black uppercase tracking-widest ring-1 ring-blue-500/20">
+                                {pendingChanges.length} Pending
+                            </span>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {pendingChanges.length === 0 ? (
+                                <div className="p-8 text-center text-slate-500 font-bold">No pending schedule changes.</div>
+                            ) : pendingChanges.map((change) => (
+                                <div key={change.id} className="p-8 flex items-center justify-between gap-6 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-all">
+                                    <div>
+                                        <h4 className="text-lg font-bold text-slate-900 dark:text-white capitalize">{change.type.replace('_', ' ')} Update</h4>
+                                        <div className="text-sm text-slate-500 border-l-2 border-emerald-500 pl-3 mt-2 font-mono bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl max-w-xl">
+                                            {JSON.stringify(change.payload).slice(0, 100)}...
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-3 font-medium">Requested By User ID {change.requested_by} • {format(new Date(change.created_at), 'MMM d, h:mm a')}</p>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => handleRejectChange(change.id)} className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all">
+                                            Deny
+                                        </button>
+                                        <button onClick={() => handleApproveChange(change.id)} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2">
+                                            <Check size={16} /> Approve & Log
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+
+                             {activeTab === 'alerts' && (
+                    <motion.div
+                        key="alerts"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden"
+                    >
+                        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Stranger Alert Feed</h3>
+                                <p className="text-sm text-slate-500 font-medium">Real-time detections of unidentified persons.</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="px-4 py-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-full text-xs font-black uppercase tracking-widest ring-1 ring-rose-500/20">
+                                    {activeStrangerAlerts.length} Live
+                                </span>
+                            </div>
+                        </div>
+                        <div className="p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {activeStrangerAlerts.length === 0 && alerts.length === 0 ? (
+                                <div className="col-span-full p-12 text-center text-slate-400 font-bold border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                                    No security alerts in the current session.
+                                </div>
+                            ) : (
+                                [...activeStrangerAlerts, ...alerts].map((alert, idx) => (
+                                    <motion.div
+                                        key={idx}
+                                        layout
+                                        className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 overflow-hidden group hover:border-blue-500/50 transition-all"
+                                    >
+                                        <div className="aspect-[4/3] relative overflow-hidden bg-slate-200 dark:bg-slate-700">
+                                            {alert.image ? (
+                                                <img src={alert.image.startsWith('data:') ? alert.image : `data:image/jpeg;base64,${alert.image}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Stranger" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center"><ShieldAlert size={48} className="text-slate-400" /></div>
+                                            )}
+                                            <div className="absolute top-4 left-4 px-3 py-1 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-lg">Unidentified</div>
+                                        </div>
+                                        <div className="p-6">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <h4 className="font-bold text-slate-900 dark:text-white truncate w-40">{alert.stranger_id}</h4>
+                                                    <p className="text-xs text-slate-500">{format(new Date(alert.timestamp || alert.created_at), 'h:mm:ss a, MMM d')}</p>
+                                                </div>
+                                                <div className="p-2 bg-white dark:bg-slate-700 rounded-xl shadow-sm"><Eye size={16} className="text-blue-500" /></div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => toast.success("Marked as Safe Person.")}
+                                                    className="flex-1 py-2 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-all border border-slate-100 dark:border-slate-600"
+                                                >
+                                                    Mark Safe
+                                                </button>
+                                                <button 
+                                                    onClick={() => toast.success("Opening Enrollment Flow...")}
+                                                    className="flex-1 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all"
+                                                >
+                                                    Enroll Student
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
                     </motion.div>
                 )}

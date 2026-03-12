@@ -27,6 +27,8 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
+import requests
+import base64
 from datetime import datetime
 from config import (
     STRANGERS_CSV, STRANGERS_EMB, STR_IMG,
@@ -38,7 +40,23 @@ class StrangerDatabase:
     def __init__(self):
         self.strangers:   dict = {}   # str_id → metadata dict
         self.embeddings:  dict = {}   # str_id → np.array (512,)
+        self.api_url = "http://127.0.0.1:8000/api/alerts/stranger"
         self._load()
+
+    def _push_alert(self, sid: str, face_img: np.ndarray):
+        """Push a stranger alert to the FastAPI backend."""
+        try:
+            _, buffer = cv2.imencode('.jpg', face_img)
+            img_b64 = base64.b64encode(buffer).decode('utf-8')
+            
+            payload = {
+                "stranger_id": sid,
+                "image_b64": img_b64,
+                "timestamp": datetime.now().isoformat()
+            }
+            requests.post(self.api_url, json=payload, timeout=2)
+        except Exception as e:
+            print(f"[StrangerDB] Failed to push alert: {e}")
 
     # ── Persistence ───────────────────────────────────────────────────────────
 
@@ -146,6 +164,9 @@ class StrangerDatabase:
         self.embeddings[sid] = embedding.astype(np.float32)
         self.save()
 
+        # Trigger real-time alert
+        self._push_alert(sid, face_img)
+
         print(f"  🚨  NEW STRANGER logged: {sid}  @ {ts}")
         return sid
 
@@ -182,6 +203,9 @@ class StrangerDatabase:
                 fpath = os.path.join(STR_IMG, fname)
                 pad_img = _square_pad(face_img, 160)
                 cv2.imwrite(fpath, pad_img)
+                
+                # Push recurring alert for visibility
+                self._push_alert(sid, face_img)
 
         self.save()
 
