@@ -88,7 +88,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('smartclass_user', JSON.stringify(userData));
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setUser(userData);
-            
+
             // Return an explicit flag so Login.jsx knows to route them to the setup page immediately
             return { success: true, role: 'parent', needsProfileCompletion: true };
         }
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('smartclass_user');
         delete axios.defaults.headers.common['Authorization'];
         setUser(null);
-        
+
         // Wipe local session states so the next user logging in on this machine doesn't inherit them
         store.setProfileCompleted(false);
         store.setFaceCaptures([]);
@@ -123,7 +123,7 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={{
-            user, login, logout, loading,
+            user, setUser, login, logout, loading,
             // Bridge to Zustand for backward compatibility
             pendingUsers: store.pendingUsers,
             approveUser: (id) => { store.approveUser(id); toast.success("User approved! Temp password: Smart@2026"); },

@@ -5,6 +5,7 @@ PART 1 — GUIDED ENROLLMENT
 - Live angle debug display
 """
 
+import os
 import cv2
 import math
 import numpy as np
@@ -408,9 +409,12 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         face_engine = FaceEngine()
         pose_est = HeadPoseEstimator(FRAME_W, FRAME_H)
 
-        cap = cv2.VideoCapture(CAM_INDEX)
+        # Try CAP_DSHOW on Windows for better stability
+        cap = cv2.VideoCapture(CAM_INDEX, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(CAM_INDEX)
+        
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
+        print(f"[Enrollment] Camera opened: {cap.isOpened()} index={CAM_INDEX}")
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         if not cap.isOpened():
@@ -430,7 +434,15 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
 
             ret, frame = cap.read()
             if not ret:
+                print("[Enrollment] Failed to capture frame")
                 break
+
+            # Diagnostic: check if frame is black
+            if frame.mean() < 0.1:
+                # If we get many black frames, it might be a busy camera or closed lid
+                # Log once in a while
+                if hold_ctr % 30 == 0:
+                    print(f"[Enrollment] Warning: Camera returning black frames (mean={frame.mean():.2f})")
 
             frame = cv2.flip(frame, 1)
             display = frame.copy()

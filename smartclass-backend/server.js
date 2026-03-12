@@ -13,12 +13,15 @@ app.use(express.json());
 // Auth endpoint
 app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
+    console.log(`[Auth] Login attempt: ${email}`);
     const user = mockUsers.find(u => u.email === email && u.password === password);
 
     if (user) {
+        console.log(`[Auth] Login success: ${email} (${user.role})`);
         const token = jwt.sign({ email: user.email, role: user.role, name: user.name, childId: user.childId }, SECRET_KEY, { expiresIn: '1h' });
         res.json({ token, user: { name: user.name, role: user.role, email: user.email, childId: user.childId } });
     } else {
+        console.log(`[Auth] Login failed: ${email} - Invalid credentials`);
         res.status(401).json({ error: 'Invalid credentials' });
     }
 });

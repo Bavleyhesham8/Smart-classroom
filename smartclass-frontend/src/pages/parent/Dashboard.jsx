@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { format, subDays } from 'date-fns';
 import Calendar from 'react-calendar';
@@ -47,6 +48,7 @@ import { cn } from '../../lib/utils';
 
 const ParentDashboard = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const globalReports = useStore(s => s.reports);
     const [student, setStudent] = useState(null);
     const [reports, setReports] = useState([]);
@@ -77,16 +79,20 @@ const ParentDashboard = () => {
         }, 5000);
 
         return () => clearTimeout(timer);
-    }, [user]);
+    }, [user?.childId]); // Re-run when childId changes (e.g. after enrollment)
 
     const fetchChildData = async () => {
-        if (user?.childId) {
-            try {
-                const res = await axios.get(`/api/students/${user.childId}`);
-                setStudent(res.data);
-            } catch (err) {
-                console.error("Failed to fetch child data", err);
-            }
+        if (!user?.childId) {
+            setLoadError(true); // No child registered yet
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/students/${user.childId}`);
+            setStudent(res.data);
+            setLoadError(false);
+        } catch (err) {
+            console.error("Failed to fetch child data", err);
+            setLoadError(true);
         }
     };
 
@@ -108,6 +114,10 @@ const ParentDashboard = () => {
         }
     };
 
+    // Ensure we don't crash if student data is missing or malformed
+    const performance = student?.performance || { quizzes: [], homework: [], handRaises: 0 };
+    const engagement = student?.engagement || [];
+
     if (!student) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
@@ -116,6 +126,22 @@ const ParentDashboard = () => {
                         <div className="w-16 h-16 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin mb-4" />
                         <p className="text-slate-500 font-medium font-sans">Loading child profile...</p>
                     </>
+                ) : !user?.childId ? (
+                    <div className="text-center">
+                        <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Info size={32} />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No child registered yet</h3>
+                        <p className="text-slate-500 text-sm mb-6 max-w-xs mx-auto">
+                            Your child's face profile hasn't been enrolled. Please complete the biometric setup.
+                        </p>
+                        <button
+                            onClick={() => navigate('/complete-profile')}
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:scale-105 transition-transform mx-auto"
+                        >
+                            Start Enrollment
+                        </button>
+                    </div>
                 ) : (
                     <div className="text-center">
                         <div className="w-16 h-16 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -156,7 +182,7 @@ const ParentDashboard = () => {
         };
     });
 
-    const handRaisesPercentage = (student.performance?.handRaises || 0) / 20 * 100;
+    const handRaisesPercentage = (performance.handRaises || 0) / 20 * 100;
     const handRaisesColor = handRaisesPercentage > 75 ? "text-emerald-500" : handRaisesPercentage > 50 ? "text-blue-500" : "text-amber-500";
 
     return (
@@ -255,7 +281,7 @@ const ParentDashboard = () => {
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                                             <HandIcon className={cn("mb-1", handRaisesColor)} size={28} />
-                                            <span className="text-2xl font-black text-slate-900 dark:text-white">{student.performance?.handRaises}</span>
+                                            <span className="text-2xl font-black text-slate-900 dark:text-white">{performance.handRaises}</span>
                                             <span className="text-[10px] font-bold text-slate-400 uppercase">Raises</span>
                                         </div>
                                     </div>
@@ -304,7 +330,7 @@ const ParentDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                    {student.performance?.quizzes.map((q, i) => (
+                                    {performance.quizzes.map((q, i) => (
                                         <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                                             <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{q.subject}</td>
                                             <td className="px-6 py-4 text-slate-500">Quiz Assessment</td>

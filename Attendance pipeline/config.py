@@ -24,6 +24,7 @@ STRANGERS_EMB   = os.path.join(STR_DIR, "embeddings.npz")
 #  CAMERA
 # ═══════════════════════════════════════════
 CAM_INDEX  = 0
+FRAME_W    = 1280
 FRAME_H    = 720
 TARGET_FPS = 30
 

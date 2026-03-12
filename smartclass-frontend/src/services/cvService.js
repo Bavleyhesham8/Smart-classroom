@@ -9,7 +9,7 @@
  *   Default: http://localhost:8000
  */
 
-const CV_API_BASE = import.meta.env.VITE_CV_API_BASE || 'http://localhost:8000';
+const CV_API_BASE = import.meta.env.VITE_CV_API_BASE || '';
 
 // ── Pipeline Control ──
 

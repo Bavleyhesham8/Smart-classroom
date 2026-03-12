@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import useStore from '../store/useStore';
 import { ShieldCheck, HeartPulse, User, Lock, ArrowRight, Camera } from 'lucide-react';
@@ -8,8 +8,10 @@ import toast from 'react-hot-toast';
 import axios from 'axios';
 
 const FullRegistration = () => {
-    const { user, login } = useAuth();
+    const { user, setUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const studentId = location.state?.studentId;
 
     const setProfileCompleted = useStore(s => s.setProfileCompleted);
     const setProfilePhoto = useStore(s => s.setProfilePhoto);
@@ -43,6 +45,14 @@ const FullRegistration = () => {
 
             setTimeout(() => {
                 setProfileCompleted(true);
+
+                // Update local user object with the newly enrolled childId
+                if (user && studentId) {
+                    const updatedUser = { ...user, childId: studentId, isNewUser: false };
+                    localStorage.setItem('smartclass_user', JSON.stringify(updatedUser));
+                    if (setUser) setUser(updatedUser);
+                }
+
                 toast.success("Registration complete! Welcome to SmartClass.", { id: toastId });
                 navigate(`/parent/dashboard`);
             }, 1500);

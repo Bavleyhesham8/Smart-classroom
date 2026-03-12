@@ -8,7 +8,7 @@ import useStore from '../store/useStore';
 
 const CompleteProfile = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const setProfileCompleted = useStore(s => s.setProfileCompleted);
 
     const [enrollStatus, setEnrollStatus] = useState({
@@ -32,7 +32,7 @@ const CompleteProfile = () => {
 
         try {
             setIsSubmitting(true);
-            const res = await fetch('http://localhost:8000/api/enroll/start', {
+            const res = await fetch('/api/enroll/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: user.name })
@@ -57,14 +57,14 @@ const CompleteProfile = () => {
 
         pollingInterval.current = setInterval(async () => {
             try {
-                const res = await fetch('http://localhost:8000/api/enroll/status');
+                const res = await fetch('/api/enroll/status');
                 if (!res.ok) return;
                 const data = await res.json();
                 setEnrollStatus(data);
 
                 if (data.stage === 'done') {
                     stopPolling();
-                    handleComplete();
+                    handleComplete(data.student_id);
                 } else if (data.stage === 'error') {
                     stopPolling();
                     toast.error(`Enrollment Error: ${data.detail || 'Unknown error'}`);
@@ -86,10 +86,27 @@ const CompleteProfile = () => {
         setIsPolling(false);
     };
 
-    const handleComplete = () => {
-        toast.success("Face Profile Generated Successfully!", { duration: 4000 });
+    const handleComplete = (studentId) => {
+        // 1. Immediately link the enrolled student to the parent account
+        if (user && studentId) {
+            const updatedUser = { ...user, childId: studentId, isNewUser: false };
+            localStorage.setItem('smartclass_user', JSON.stringify(updatedUser));
+            if (setUser) setUser(updatedUser);
+        }
+
+        // 2. Mark profile as complete
         setProfileCompleted(true);
-        navigate('/full-registration');
+
+        // 3. Show success and navigate to dashboard
+        toast.success("Face Profile Created! Redirecting...", {
+            duration: 3000,
+            icon: '🎉',
+            style: { borderRadius: '10px', background: '#333', color: '#fff' }
+        });
+
+        setTimeout(() => {
+            navigate('/parent/dashboard');
+        }, 2000);
     };
 
     if (!user) {
@@ -135,7 +152,7 @@ const CompleteProfile = () => {
                             {isPolling ? (
                                 <>
                                     <img
-                                        src="http://localhost:8000/stream"
+                                        src="/stream"
                                         alt="AI Vision Stream"
                                         className="w-full h-full object-cover opacity-90 transition-opacity duration-700"
                                     />
