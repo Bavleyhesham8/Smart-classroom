@@ -11,30 +11,28 @@
 ## 📺 Project Demo
 *Experience the 2026 Education Ecosystem in action.*
 
-![SmartClass AI Demo](docs/assets/smartclass_demo.webp)
+<video src="docs/assets/cv demo.mp4" width="100%" controls></video>
 
 ---
 
 ## ⚡ Recent Progress & Core Features
 
-### 🔐 AI Biometric Onboarding (V3)
-- **Advanced Spatial Registration**: Parents capture 3 unique spatial face angles (Front, Left, Right) via a high-fidelity "Neural Vision" scanner.
-- **Unified Camera Modal**: Integrated a premium, reusable `CameraModal` across all dashboards for instant, non-disruptive capture.
-- **Biometric Encryption**: Real-time vectorization of face embeddings for maximum privacy and security.
+### 🔐 Authentication & Security
+- **Modern Login Experience**: A sleek, high-fidelity entry point for Admin, Teachers, and Parents.
+- **Advanced AI Onboarding**: New users undergo a "Neural Vision" spatial scan to initialize their biometric identity.
 
-![AI Biometric Scanner](docs/assets/ai_scanner.png)
+| Sign In / Up | AI Biometric Scanner |
+|:---:|:---:|
+| ![Login Page](docs/assets/sign in-up page.png) | ![AI Scanner](docs/assets/ai scanner.png) |
 
 ### 📊 Professional Dashboards
-- **Teacher Command Center**: Real-time attendance monitoring, AI-driven participation analytics (Radar charts), and direct parent reporting.
-- **Admin Management Suite**: 
-    - **Soft Delete**: Remove teachers/students from the active system while retaining audit history.
-    - **Hard Delete**: Full database removal for permanent records cleanup.
-    - **Profile Management**: Instant photo updates and credential management.
-- **Parent Portal**: Real-time access to child engagement logs, attendance, and high-fidelity school calendars.
+- **Teacher Command Center**: Real-time attendance monitoring, AI-driven participation analytics, and direct parent reporting.
+- **Admin Management Suite**: Complete oversight of school operations with instant deactivation/deletion capabilities.
+- **Parent Portal**: Direct connection to student progress and school events.
 
 | Admin Dashboard | Teacher Dashboard |
 |:---:|:---:|
-| ![Admin Hub](docs/assets/admin_dashboard.png) | ![Teacher Hub](docs/assets/teacher_dashboard.png) |
+| ![Admin Hub](docs/assets/admin page.png) | ![Teacher Hub](docs/assets/teacher page.png) |
 
 ### 🎨 2026 Design System
 - **Glassmorphism**: Ultra-modern translucent UI elements with backdrop-blur and satin finishes.
