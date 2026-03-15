@@ -28,6 +28,7 @@ class Student(Base):
     enrolled_date = Column(DateTime, default=datetime.utcnow)
     profile_image_b64 = Column(Text, nullable=True)
     class_name = Column(String, nullable=True) # Mapping to "Grade 10 - Section A" etc
+    status = Column(String, default="active") # active, inactive
     
     parent_user = relationship("User", foreign_keys=[User.child_id], back_populates="student")
     embeddings = relationship("FaceEmbedding", back_populates="student", cascade="all, delete-orphan")

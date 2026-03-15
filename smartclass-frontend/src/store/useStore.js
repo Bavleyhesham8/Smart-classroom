@@ -22,7 +22,18 @@ const useStore = create(
                 }
             },
             initTheme: (forcedTheme = null) => {
-                const t = forcedTheme || get().theme;
+                const stored = localStorage.getItem('smartclass-store');
+                let t = forcedTheme;
+                if (!t && stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        t = parsed.state?.theme;
+                    } catch (e) {
+                        console.error("Theme parse error", e);
+                    }
+                }
+                if (!t) t = get().theme || 'light';
+                
                 if (forcedTheme) set({ theme: forcedTheme });
                 if (t === 'dark') document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');

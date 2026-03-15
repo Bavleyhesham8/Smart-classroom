@@ -106,7 +106,7 @@ const StudentCard = ({ student, selectedDate, onOverride, onReport }) => {
                 </div>
                 <div className="flex-1 min-w-0">
                     <h4 className="font-bold text-slate-900 dark:text-white truncate">{student.name}</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">ID: {student.id}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">ID: {student.student_id || student.id}</p>
                 </div>
             </div>
 
@@ -129,7 +129,7 @@ const StudentCard = ({ student, selectedDate, onOverride, onReport }) => {
 
             <div className="grid grid-cols-2 gap-2 mt-4">
                 <button
-                    onClick={() => onOverride(student.id, isPresent ? 'Absent' : 'Present')}
+                    onClick={() => onOverride(student.student_id || student.id, isPresent ? 'Absent' : 'Present')}
                     className={cn(
                         "flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all",
                         isPresent
@@ -224,7 +224,7 @@ const TeacherDashboard = () => {
             const res = await axios.post('/api/attendance/override', { studentId, date: selectedDate, status });
             if (res.data.success) {
                 const updatedStudents = students.map(s =>
-                    s.id === studentId ? res.data.student : s
+                    (s.student_id || s.id) === studentId ? res.data.student : s
                 );
                 setStudents(updatedStudents);
             }
@@ -419,7 +419,7 @@ const TeacherDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {teacherData?.schedule.map((slot, i) => (
+                                {teacherData?.schedule?.map((slot, i) => (
                                     <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                                         <td className="px-4 py-4 font-bold text-slate-400">{slot.time}</td>
                                         <td className="px-4 py-4 text-slate-700 dark:text-slate-300">{slot.monday}</td>
@@ -445,7 +445,7 @@ const TeacherDashboard = () => {
                         Must Prepare
                     </h3>
                     <div className="space-y-4">
-                        {teacherData?.todo.map((item, i) => (
+                        {teacherData?.todo?.map((item, i) => (
                             <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group hover:border-teal-500/30 transition-all">
                                 <div className={cn(
                                     "p-2 rounded-lg",
@@ -464,7 +464,7 @@ const TeacherDashboard = () => {
                     <div className="mt-8">
                         <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Upcoming Lesson Plans</h4>
                         <div className="space-y-2">
-                            {teacherData?.lessonPlans.map((plan, i) => (
+                            {teacherData?.lessonPlans?.map((plan, i) => (
                                 <div key={i} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
                                     <button
                                         onClick={() => setExpandedLesson(expandedLesson === i ? -1 : i)}
@@ -641,15 +641,15 @@ const TeacherDashboard = () => {
                         />
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredStudents.map(student => (
-                                <StudentCard
-                                    key={student.id}
-                                    student={student}
-                                    selectedDate={selectedDate}
-                                    onOverride={handleOverride}
-                                    onReport={handleOpenReport}
-                                />
-                            ))}
+                                    {filteredStudents.map(student => (
+                                        <StudentCard
+                                            key={student.student_id || student.id}
+                                            student={student}
+                                            selectedDate={selectedDate}
+                                            onOverride={handleOverride}
+                                            onReport={handleOpenReport}
+                                        />
+                                    ))}
                         </div>
                     )}
                 </div>

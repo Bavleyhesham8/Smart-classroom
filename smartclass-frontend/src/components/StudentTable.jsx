@@ -21,7 +21,7 @@ const StudentTable = ({ students, onOverride, selectedDate }) => {
                         const isPresent = todayRecord.status === 'Present';
 
                         return (
-                            <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
+                            <tr key={student.student_id || student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors duration-150">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
@@ -52,7 +52,7 @@ const StudentTable = ({ students, onOverride, selectedDate }) => {
                                 {onOverride && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
                                         <button
-                                            onClick={() => onOverride(student.id, isPresent ? 'Absent' : 'Present')}
+                                            onClick={() => onOverride(student.student_id || student.id, isPresent ? 'Absent' : 'Present')}
                                             className={cn(
                                                 "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200",
                                                 isPresent

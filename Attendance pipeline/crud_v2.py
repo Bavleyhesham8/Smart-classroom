@@ -29,6 +29,14 @@ def delete_student(db: Session, student_id: str):
         db.commit()
     return db_student
 
+def deactivate_student(db: Session, student_id: str):
+    db_student = db.query(models.Student).filter(models.Student.student_id == student_id).first()
+    if db_student:
+        db_student.status = "inactive"
+        db.commit()
+        db.refresh(db_student)
+    return db_student
+
 # Attendance
 def get_attendance_log(db: Session, student_id: str = None, date: str = None):
     query = db.query(models.AttendanceLog)
@@ -114,8 +122,22 @@ def get_classes_by_teacher(db: Session, teacher_id: int):
 def delete_teacher(db: Session, teacher_id: int):
     db_teacher = db.query(models.Teacher).filter(models.Teacher.id == teacher_id).first()
     if db_teacher:
+        # Also delete the associated User to hard-delete from database
+        db_user = db.query(models.User).filter(models.User.id == db_teacher.user_id).first()
+        if db_user:
+            db.delete(db_user)
         db.delete(db_teacher)
         db.commit()
+    return db_teacher
+
+def deactivate_teacher(db: Session, teacher_id: int):
+    db_teacher = db.query(models.Teacher).filter(models.Teacher.id == teacher_id).first()
+    if db_teacher:
+        db_user = db.query(models.User).filter(models.User.id == db_teacher.user_id).first()
+        if db_user:
+            db_user.status = "rejected" # Or add "inactive"
+            db.commit()
+            db.refresh(db_user)
     return db_teacher
 
 # ── Pending Changes (Workflow) ──────────────────────────

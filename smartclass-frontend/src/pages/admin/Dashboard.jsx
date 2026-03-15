@@ -154,21 +154,36 @@ const AdminDashboard = () => {
     };
 
     const handleDeleteEntity = async (id, type) => {
-        if (!window.confirm(`Are you sure you want to permanently remove this ${type === 'teachers' ? 'Teacher' : 'Student'} from the system?`)) return;
+        if (!window.confirm(`PERMANENT DELETE: Are you sure you want to hard-delete this ${type === 'teachers' ? 'Teacher' : 'Student'} and ALL their data from the database? This cannot be undone.`)) return;
         try {
             if (type === 'teachers') {
-                if (!id.toString().startsWith('T')) {
-                    await axios.delete(`/api/teacher/${id}`);
-                }
+                await axios.delete(`/api/teacher/${id}`);
                 setTeachers(prev => prev.filter(t => t.id !== id));
             } else {
                 await axios.delete(`/api/students/${id}`);
                 setStudents(prev => prev.filter(s => s.student_id !== id && s.id !== id));
             }
             setSelectedEntity(null);
-            toast.success(`${type === 'teachers' ? 'Teacher' : 'Student'} removed successfully.`);
+            toast.success("Record permanently deleted from database.");
         } catch (e) {
-            toast.error(`Failed to remove from database. They might have related records.`);
+            toast.error("Failed to hard-delete. Check server logs.");
+        }
+    };
+
+    const handleDeactivateEntity = async (id, type) => {
+        if (!window.confirm(`Are you sure you want to remove this ${type === 'teachers' ? 'Teacher' : 'Student'} from the active system? (Soft delete)`)) return;
+        try {
+            if (type === 'teachers') {
+                await axios.patch(`/api/teacher/${id}/deactivate`);
+                setTeachers(prev => prev.filter(t => t.id !== id));
+            } else {
+                await axios.patch(`/api/students/${id}/deactivate`);
+                setStudents(prev => prev.filter(s => s.student_id !== id && s.id !== id));
+            }
+            setSelectedEntity(null);
+            toast.success("Removed from active system.");
+        } catch (e) {
+            toast.error("Failed to deactivate.");
         }
     };
 
@@ -372,13 +387,13 @@ const AdminDashboard = () => {
                                         .map((entity) => (
                                             <tr key={entity.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-all group">
                                                 <td className="px-8 py-5">
-                                                    <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-4 text-left">
                                                         <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-blue-600">
-                                                            {entity.name[0]}
+                                                            {(entity.name || '?')[0]}
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-slate-900 dark:text-white leading-tight">{entity.name}</p>
-                                                            <p className="text-xs text-slate-400">ID: {entity.id}</p>
+                                                            <p className="text-xs text-slate-400">ID: {entity.student_id || entity.id}</p>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -425,12 +440,20 @@ const AdminDashboard = () => {
                                     </div>
                                     <h3 className="text-3xl font-black text-slate-900 dark:text-white">{selectedEntity.name}</h3>
                                     <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2 mb-6">{activeTab === 'teachers' ? 'Faculty Member' : 'Enrolled Student'}</p>
-                                    <button 
-                                        onClick={() => handleDeleteEntity(selectedEntity.id || selectedEntity.student_id, activeTab)}
-                                        className="px-6 py-2.5 bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black uppercase tracking-[.15em] text-[10px] hover:bg-rose-200 dark:hover:bg-rose-500/20 transition-all flex items-center justify-center gap-2 mx-auto w-full max-w-[200px]"
-                                    >
-                                        <X size={16} /> Remove from DB
-                                    </button>
+                                    <div className="flex flex-col gap-3 w-full max-w-[200px] mx-auto">
+                                        <button 
+                                            onClick={() => handleDeactivateEntity(selectedEntity.student_id || selectedEntity.id, activeTab)}
+                                            className="px-6 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-xl font-black uppercase tracking-[.15em] text-[10px] hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <MinusCircle size={16} /> Remove from System
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteEntity(selectedEntity.student_id || selectedEntity.id, activeTab)}
+                                            className="px-6 py-2.5 bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black uppercase tracking-[.15em] text-[10px] hover:bg-rose-200 dark:hover:bg-rose-500/20 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <X size={16} /> Delete from DB
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">

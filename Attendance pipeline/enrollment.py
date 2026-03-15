@@ -409,18 +409,35 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         face_engine = FaceEngine()
         pose_est = HeadPoseEstimator(FRAME_W, FRAME_H)
 
-        # Try CAP_DSHOW on Windows for better stability
-        cap = cv2.VideoCapture(CAM_INDEX, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(CAM_INDEX)
+        # Try multiple camera indices if CAM_INDEX fails
+        indices_to_try = [CAM_INDEX, 0, 1, 2] if CAM_INDEX != 0 else [0, 1, 2]
+        cap = None
         
+        for idx in indices_to_try:
+            print(f"[Enrollment] Attempting to open camera index {idx}...")
+            test_cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(idx)
+            if test_cap.isOpened():
+                cap = test_cap
+                print(f"[Enrollment] Camera opened successfully on index {idx}")
+                break
+            test_cap.release()
+
+        if not cap or not cap.isOpened():
+            print("[Enrollment] CRITICAL: Could not open any camera index.")
+            with lock:
+                status_dict.update({"stage": "error", "detail": "Camera access failed. Ensure no other app is using it."})
+            
+            # Optional: yield one "Camera Fail" frame so user sees the error on stream
+            if update_frame_cb:
+                fail_frame = np.zeros((FRAME_H, FRAME_W, 3), dtype=np.uint8)
+                cv2.putText(fail_frame, "CAMERA ACCESS FAILED", (FRAME_W//2-200, FRAME_H//2), cv2.FONT_HERSHEY_DUPLEX, 1.0, (0,0,255), 2)
+                _, jpeg = cv2.imencode('.jpg', fail_frame)
+                update_frame_cb(jpeg.tobytes())
+            return
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_W)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
-        print(f"[Enrollment] Camera opened: {cap.isOpened()} index={CAM_INDEX}")
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-
-        if not cap.isOpened():
-            with lock:
-                status_dict.update({"stage": "error", "detail": "Could not open camera"})
-            return
 
         captured_embs = []
         stage_idx = 0

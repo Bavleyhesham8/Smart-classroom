@@ -59,14 +59,18 @@ video_queue = queue.Queue(maxsize=10)
 def gen_frames():
     while True:
         try:
-            frame = video_queue.get(timeout=1.0)
+            # Short timeout to keep loop responsive
+            frame = video_queue.get(timeout=0.5)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         except queue.Empty:
+            # If queue is empty, we could yield a "Waiting for stream..." image
+            # For now just continue to keep the connection alive
             continue
 
 @app.get("/stream")
 async def video_stream():
+    print(f"[Stream] New viewer connected at {datetime.now()}")
     return StreamingResponse(gen_frames(),
                              media_type='multipart/x-mixed-replace; boundary=frame')
 
@@ -158,6 +162,13 @@ def delete_student(student_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Student not found")
     return {"status": "success", "message": "Student deleted"}
 
+@app.patch("/api/students/{student_id}/deactivate")
+def deactivate_student(student_id: str, db: Session = Depends(get_db)):
+    student = crud.deactivate_student(db, student_id=student_id)
+    if not student:
+        raise HTTPException(status_code=404)
+    return {"status": "success"}
+
 # ── Attendance ────────────────────────────────────────────────────────────────
 
 @app.post("/api/attendance/override")
@@ -208,6 +219,13 @@ def delete_teacher(teacher_id: int, db: Session = Depends(get_db)):
     if not teacher:
         raise HTTPException(status_code=404, detail="Teacher not found")
     return {"status": "success", "message": "Teacher deleted"}
+
+@app.patch("/api/teacher/{teacher_id}/deactivate")
+def deactivate_teacher(teacher_id: int, db: Session = Depends(get_db)):
+    teacher = crud.deactivate_teacher(db, teacher_id=teacher_id)
+    if not teacher:
+        raise HTTPException(status_code=404)
+    return {"status": "success"}
 
 # ── Admin / Users ─────────────────────────────────────────────────────────────
 
