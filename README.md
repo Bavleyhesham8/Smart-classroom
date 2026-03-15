@@ -11,10 +11,9 @@
 ## 📺 Project Demo
 *Experience the 2026 Education Ecosystem in action.*
 
-[![Watch SmartClass AI Demo](docs/assets/ai_scanner.png)](docs/assets/cv_demo.mp4)
-
-> [!IMPORTANT]
-> **Click the image above** to watch the high-definition Computer Vision demo (`cv_demo.mp4`).
+<div align="center">
+  <video src="docs/assets/cv_demo.mp4" width="100%" controls autoplay loop muted></video>
+</div>
 
 ---
 
