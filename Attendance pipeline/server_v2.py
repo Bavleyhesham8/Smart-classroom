@@ -147,10 +147,13 @@ def get_student(student_id: str, db: Session = Depends(get_db)):
     }
 
 @app.patch("/api/students/{student_id}/photo")
+@app.post("/api/students/{student_id}/photo")
 def update_student_photo(student_id: str, req: dict, db: Session = Depends(get_db)):
     student = crud.get_student(db, student_id=student_id)
     if not student:
-        raise HTTPException(status_code=404)
+        student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
     student.profile_image_b64 = req.get("image_b64")
     db.commit()
     return {"status": "success"}
@@ -172,8 +175,18 @@ def deactivate_student(student_id: str, db: Session = Depends(get_db)):
 # ── Attendance ────────────────────────────────────────────────────────────────
 
 @app.post("/api/attendance/override")
-def attendance_override(req: schemas.AttendanceOverrideRequest, db: Session = Depends(get_db)):
-    crud.update_attendance(db, req.studentId, req.date, req.status)
+async def attendance_override(req: schemas.AttendanceOverrideRequest, db: Session = Depends(get_db)):
+    log = crud.update_attendance(db, req.studentId, req.date, req.status)
+    # Broadcast update to all dashboards
+    await manager.broadcast({
+        "type": "attendance_update",
+        "payload": {
+            "student_id": req.studentId,
+            "date": req.date,
+            "status": req.status,
+            "time": datetime.now().strftime("%I:%M %p")
+        }
+    })
     return {"success": True}
 
 # ── Reports ───────────────────────────────────────────────────────────────────
@@ -189,9 +202,38 @@ def create_report(req: dict, db: Session = Depends(get_db)):
     teacher_id = req.get("teacherId", 1) # Default for mock
     subject = req.get("subject")
     content = req.get("content")
-    return crud.create_report(db, student_id, teacher_id, subject, content)
+    report = crud.create_report(db, student_id, teacher_id, subject, content)
+    # Broadcast new report to Admin & Teacher dashboards
+    asyncio.create_task(manager.broadcast({
+        "type": "report_new",
+        "payload": {
+            "id": report.id,
+            "student_id": report.student_id,
+            "subject": report.subject,
+            "status": report.status,
+            "date": report.date
+        }
+    }))
+    return report
 
-# ── Teacher Data ──────────────────────────────────────────────────────────────
+@app.patch("/api/reports/{report_id}/status")
+async def update_report_status(report_id: int, req: dict, db: Session = Depends(get_db)):
+    status = req.get("status")
+    log_action = req.get("log_action")
+    report = crud.update_report_status(db, report_id, status, log_action)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast({
+        "type": "report_update",
+        "payload": {
+            "id": report.id,
+            "status": report.status,
+            "audit_log": report.audit_log
+        }
+    })
+    return report
 
 @app.get("/api/teacher/data")
 def get_teacher_data(user_id: int = 1, db: Session = Depends(get_db)):
@@ -205,7 +247,12 @@ def get_teacher_data(user_id: int = 1, db: Session = Depends(get_db)):
         schedule = classes[0].schedule # Return first class schedule as mock
     return {
         "teacher": {"name": teacher.user.name, "subject": teacher.subject},
-        "schedule": schedule
+        "schedule": schedule,
+        "performance": {
+            "strengths": ["Active Participation", "Analytical Thinking", "Group Collaboration"],
+            "weaknesses": ["Time Management", "Complex Documentation"],
+            "avgEngagement": 88
+        }
     }
 
 @app.get("/api/teacher/schedule")
@@ -225,6 +272,15 @@ def deactivate_teacher(teacher_id: int, db: Session = Depends(get_db)):
     teacher = crud.deactivate_teacher(db, teacher_id=teacher_id)
     if not teacher:
         raise HTTPException(status_code=404)
+    return {"status": "success"}
+
+@app.post("/api/teacher/{teacher_id}/photo")
+def update_teacher_photo(teacher_id: int, req: dict, db: Session = Depends(get_db)):
+    teacher = crud.get_teacher(db, teacher_id=teacher_id)
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    teacher.user.photo = req.get("image_b64")
+    db.commit()
     return {"status": "success"}
 
 # ── Admin / Users ─────────────────────────────────────────────────────────────

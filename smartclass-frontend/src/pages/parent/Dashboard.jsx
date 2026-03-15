@@ -39,11 +39,14 @@ import {
     ArrowRight,
     Clock,
     Copy,
-    XCircle
+    XCircle,
+    Camera,
+    RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useStore from '../../store/useStore';
 import Notification from '../../components/Notification';
+import CameraModal from '../../components/CameraModal';
 import { cn } from '../../lib/utils';
 
 const ParentDashboard = () => {
@@ -55,6 +58,7 @@ const ParentDashboard = () => {
     const [teacherData, setTeacherData] = useState(null);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+    const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [loadError, setLoadError] = useState(false);
 
     // Sync reports from Zustand (Admin actions update this instantly)
@@ -111,6 +115,20 @@ const ParentDashboard = () => {
             setTeacherData(res.data);
         } catch (err) {
             console.error("Failed to fetch teacher data", err);
+        }
+    };
+
+    const handlePhotoCapture = async (base64) => {
+        if (!student?.student_id && !student?.id) return;
+        const id = student.student_id || student.id;
+        
+        try {
+            await axios.post(`/api/students/${id}/photo`, { image_b64: base64 });
+            setStudent(prev => ({ ...prev, profile_image_b64: base64 }));
+            toast.success("Child's profile photo updated!");
+        } catch (err) {
+            console.error("Failed to update photo", err);
+            toast.error("Failed to sync photo to server.");
         }
     };
 
@@ -210,7 +228,7 @@ const ParentDashboard = () => {
                                 />
                             </div>
                             <button 
-                                onClick={() => navigate('/complete-profile')}
+                                onClick={() => setIsCameraModalOpen(true)}
                                 className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 text-blue-600 hover:scale-110 transition-transform cursor-pointer"
                                 title="Change Profile Photo"
                             >
@@ -563,6 +581,13 @@ const ParentDashboard = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            <CameraModal 
+                isOpen={isCameraModalOpen} 
+                onClose={() => setIsCameraModalOpen(false)} 
+                onCapture={handlePhotoCapture}
+                title={`Update ${student.name}'s Photo`}
+            />
         </div>
     );
 };

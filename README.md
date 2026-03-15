@@ -1,6 +1,6 @@
 # 🎓 SmartClass AI - Premium Education Ecosystem (2026 Edition)
 
-![Build Status](https://img.shields.io/badge/Version-3.0.0--Production-teal?style=for-the-badge)
+![Build Status](https://img.shields.io/badge/Version-3.2.0--Production-teal?style=for-the-badge)
 ![Security](https://img.shields.io/badge/Security-AI--Spatial--Registration-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Proprietary-rose?style=for-the-badge)
 
@@ -8,37 +8,53 @@
 
 ---
 
-## ⚡ Key Features
+## 📺 Project Demo
+*Experience the 2026 Education Ecosystem in action.*
 
-### 🔐 AI Security & Onboarding
-- **Spatial Registration**: New parents must capture 3 unique spatial face angles to initialize their security profile.
-- **Biometric Encryption**: Localized encryption of face embeddings for maximum privacy.
-- **Admin Approval Queue**: Multi-stage verification process for new user requests.
+![SmartClass AI Demo](docs/assets/smartclass_demo.webp)
 
-### 📊 Comprehensive Dashboards
-- **Teacher Hub**: AI-driven student performance recommendations (Radar charts), attendance tracking, and report management.
-- **Admin Command Center**: Complete oversight of teachers, students, financial states (salary/fees), and security audits.
-- **Parent Portal**: Real-time access to child reports, attendance logs, and high-fidelity school calendars.
+---
+
+## ⚡ Recent Progress & Core Features
+
+### 🔐 AI Biometric Onboarding (V3)
+- **Advanced Spatial Registration**: Parents capture 3 unique spatial face angles (Front, Left, Right) via a high-fidelity "Neural Vision" scanner.
+- **Unified Camera Modal**: Integrated a premium, reusable `CameraModal` across all dashboards for instant, non-disruptive capture.
+- **Biometric Encryption**: Real-time vectorization of face embeddings for maximum privacy and security.
+
+![AI Biometric Scanner](docs/assets/ai_scanner.png)
+
+### 📊 Professional Dashboards
+- **Teacher Command Center**: Real-time attendance monitoring, AI-driven participation analytics (Radar charts), and direct parent reporting.
+- **Admin Management Suite**: 
+    - **Soft Delete**: Remove teachers/students from the active system while retaining audit history.
+    - **Hard Delete**: Full database removal for permanent records cleanup.
+    - **Profile Management**: Instant photo updates and credential management.
+- **Parent Portal**: Real-time access to child engagement logs, attendance, and high-fidelity school calendars.
+
+| Admin Dashboard | Teacher Dashboard |
+|:---:|:---:|
+| ![Admin Hub](docs/assets/admin_dashboard.png) | ![Teacher Hub](docs/assets/teacher_dashboard.png) |
 
 ### 🎨 2026 Design System
-- **Glassmorphism**: Ultra-modern translucent UI elements with backdrop-blur.
-- **Dynamic Backgrounds**: High-resolution classroom imagery with intelligent overlays for readability.
-- **Fluid UX**: Micro-animations powered by Framer Motion and real-time state via Zustand.
+- **Glassmorphism**: Ultra-modern translucent UI elements with backdrop-blur and satin finishes.
+- **Modern Theme Engine**: Instant switch between Light and Deep Space Dark modes with zero-latency persistence.
+- **Fluid UX**: Micro-animations powered by **Framer Motion** and real-time state via **Zustand**.
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### Frontend (Modern React Stack)
-- **Framework**: Vite + React 18
-- **Styling**: Tailwind CSS + shadcn/ui + Vanilla CSS Hardening
-- **State Management**: Zustand (Global State) + React Context (Security Layer)
-- **Visualization**: Recharts (Spatial Performance Analysis)
+### AI Core (Attendance Pipeline)
+- **Framework**: FastAPI (Python 3.10+)
+- **Engines**: OpenCV + Face Recognition + Mediapipe
+- **Resilience**: Intelligent CPU/GPU fallback for high-availability biometric processing.
 
-### Backend (Robust Node Service)
-- **Runtime**: Node.js + Express
-- **API Strategy**: RESTful with custom Middleware for role-based access.
-- **Database**: Mock JSON-based persistence (Production-ready interface).
+### Web Ecosystem
+- **Frontend**: Vite + React 18 + Tailwind CSS + shadcn/ui
+- **Backend**: FastAPI + SQLAlchemy (Standardized V2 Models)
+- **State Management**: Zustand (Global) + WebSocket (Real-time Broadcasts)
+- **Database**: PostgreSQL / SQLite hybrid for production reliability.
 
 ---
 
@@ -46,21 +62,21 @@
 
 ### Prerequisites
 - Node.js (v18.0+)
-- NPM or PNPM
+- Python (v3.9+)
+- NPM
 
 ### Step-by-Step Launch
 
-1. **Start the Backend Service**
+1. **Start the AI Backend**
    ```bash
-   cd smartclass-backend
-   npm install
-   node server.js
+   cd "Attendance pipeline"
+   python server_v2.py
    ```
-   *Service will run on http://localhost:5000*
+   *Service will run on http://localhost:8000*
 
 2. **Start the Frontend Application**
    ```bash
-   cd smartclass-frontend
+   cd "smartclass-frontend"
    npm install
    npm run dev
    ```
@@ -68,19 +84,12 @@
 
 ---
 
-## 🔐 Proprietary Protection
+## 🛠️ Reliability & Maintenance
 
-This software is **Proprietary and Confidential**. All rights are reserved.
-
-- **Unauthorized Copying**: Strictly prohibited.
-- **Modification/Distribution**: Requires explicit written consent from the author.
-- **Commercial Use**: Forbidden without a valid enterprise license.
-
----
-
-## 🛠️ Diagnostics & Maintenance
-
-If the system hangs on the **Initialization Screen** (Dark Blue), use the built-in **Hard Reset** button at the bottom of the screen to clear stale local sessions and reboot the security layer.
+The system has undergone a full **Production Reliability Audit**:
+- **Hardened State**: Eliminated "white screen" bugs with robust null-checks.
+- **Theme Stabilization**: Added persistent theme-sync to eliminate load flicker.
+- **Session Safety**: Use the **Hard Reset** button on the login/load screen to clear stale sessions.
 
 ---
 *© 2026 SmartClass AI Inc. Future-Proof Education Management.*

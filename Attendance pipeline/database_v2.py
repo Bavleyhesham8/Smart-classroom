@@ -5,9 +5,10 @@ import os
 
 # Using the same classroom.db but for the new models
 # In a real migration, we would use Alembic
-DB_URL = "sqlite:///d:/Smart classroom/Attendance pipeline/classroom_v2.db"
+# Using PostgreSQL for production reliability
+DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/smartclass")
 
-engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db_v2():

@@ -388,6 +388,7 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
     """
     import cv2
     import numpy as np
+    import base64
     from face_engine import FaceEngine
     from database import StudentDatabase
     from config import CAM_INDEX, FRAME_W, FRAME_H, HOLD_FRAMES
@@ -440,6 +441,7 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
         captured_embs = []
+        captured_thumb_b64 = ""
         stage_idx = 0
         hold_ctr = 0
 
@@ -505,6 +507,19 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
 
             if pose_ok and hold_ctr >= HOLD_FRAMES:
                 captured_embs.append(face.embedding.copy())
+                
+                # Capture thumbnail for the front face (first pose)
+                if stage_idx == 0 and face_bbox is not None:
+                    try:
+                        x1, y1, x2, y2 = face_bbox
+                        roi = frame[max(0, y1):y2, max(0, x1):x2]
+                        if roi.size > 0:
+                            resized = cv2.resize(roi, (200, 200))
+                            _, buffer = cv2.imencode('.jpg', resized)
+                            captured_thumb_b64 = "data:image/jpeg;base64," + base64.b64encode(buffer).decode('utf-8')
+                    except Exception as e:
+                        print(f"[Enrollment] Thumbnail capture failed: {e}")
+
                 hold_ctr = 0
                 stage_idx += 1
                 with lock:
@@ -539,7 +554,7 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
                 new_student = models.Student(
                     student_id=sid,
                     name=name,
-                    profile_image_b64="", # Will be updated if thumb captured
+                    profile_image_b64=captured_thumb_b64,
                     enrolled_date=datetime.now()
                 )
                 session.add(new_student)

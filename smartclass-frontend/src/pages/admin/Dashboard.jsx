@@ -32,12 +32,14 @@ import {
     X,
     UserCircle2,
     ShieldAlert,
-    Eye
+    Eye,
+    MinusCircle
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
 
 import StudentTable from '../../components/StudentTable';
+import CameraModal from '../../components/CameraModal';
 import { cn } from '../../lib/utils';
 import { exportToCSV } from '../../utils/csvExport';
 
@@ -55,6 +57,7 @@ const AdminDashboard = () => {
     const [selectedReport, setSelectedReport] = useState(null);
     const [alerts, setAlerts] = useState([]);
     const [activeStrangerAlerts, setActiveStrangerAlerts] = useState([]);
+    const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
     const [pendingChanges, setPendingChanges] = useState([]);
 
     useEffect(() => {
@@ -67,6 +70,11 @@ const AdminDashboard = () => {
                 setActiveStrangerAlerts(prev => [data.payload, ...prev]);
                 toast.error("SYSTEM ALERT: New Unidentified Person Detected", { icon: '🚨' });
                 fetchAlerts();
+            } else if (data.type === 'report_update') {
+                store.updateReportFromWs(data.payload);
+            } else if (data.type === 'report_new') {
+                store.addNewReportFromWs(data.payload);
+                toast.success(`New Report Submitted: ${data.payload.subject}`);
             }
         };
 
@@ -184,6 +192,27 @@ const AdminDashboard = () => {
             toast.success("Removed from active system.");
         } catch (e) {
             toast.error("Failed to deactivate.");
+        }
+    };
+
+    const handlePhotoCapture = async (base64) => {
+        if (!selectedEntity) return;
+        const id = selectedEntity.student_id || selectedEntity.id;
+        const url = activeTab === 'teachers' ? `/api/teacher/${id}/photo` : `/api/students/${id}/photo`;
+        
+        try {
+            await axios.post(url, { image_b64: base64 });
+            // Update local state arrays to reflect change
+            if (activeTab === 'teachers') {
+                setTeachers(prev => prev.map(t => t.id === id ? { ...t, profile_image_b64: base64 } : t));
+            } else {
+                setStudents(prev => prev.map(s => (s.student_id === id || s.id === id) ? { ...s, profile_image_b64: base64 } : s));
+            }
+            setSelectedEntity(prev => ({ ...prev, profile_image_b64: base64 }));
+            toast.success("Profile photo updated & synced!");
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to update photo on server.");
         }
     };
 
@@ -404,12 +433,28 @@ const AdminDashboard = () => {
                                                     {entity.experience || '88%'}
                                                 </td>
                                                 <td className="px-8 py-5 text-right">
-                                                    <button
-                                                        onClick={() => setSelectedEntity(entity)}
-                                                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                                    >
-                                                        View Profile
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedEntity(entity)}
+                                                            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            View Profile
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeactivateEntity(entity.student_id || entity.id, activeTab)}
+                                                            className="px-3 py-2 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl text-xs font-bold hover:bg-amber-500 hover:text-white transition-all shadow-sm"
+                                                            title="Remove from system"
+                                                        >
+                                                            <MinusCircle size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteEntity(entity.student_id || entity.id, activeTab)}
+                                                            className="px-3 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                                            title="Delete from database"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -435,10 +480,20 @@ const AdminDashboard = () => {
                         <div className="flex flex-col lg:flex-row gap-12">
                             <div className="lg:w-1/3 space-y-8">
                                 <div className="text-center">
-                                    <div className="w-32 h-32 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 mx-auto mb-6 flex items-center justify-center text-5xl font-black text-blue-600 shadow-xl border-4 border-white dark:border-slate-800">
-                                        {selectedEntity.name[0]}
+                                    <div className="relative w-32 h-32 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 mx-auto mb-6 flex items-center justify-center text-5xl font-black text-blue-600 shadow-xl border-4 border-white dark:border-slate-800 group overflow-hidden">
+                                        {selectedEntity.profile_image_b64 ? (
+                                            <img src={selectedEntity.profile_image_b64.startsWith('data:') ? selectedEntity.profile_image_b64 : `data:image/jpeg;base64,${selectedEntity.profile_image_b64}`} className="w-full h-full object-cover" />
+                                        ) : (
+                                            selectedEntity.name ? selectedEntity.name[0] : '?'
+                                        )}
+                                        <button 
+                                            onClick={() => setIsCameraModalOpen(true)}
+                                            className="absolute inset-0 bg-blue-600/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-2"
+                                        >
+                                            <Camera size={16} /> Edit
+                                        </button>
                                     </div>
-                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{selectedEntity.name}</h3>
+                                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{selectedEntity.name || 'Unknown Entity'}</h3>
                                     <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2 mb-6">{activeTab === 'teachers' ? 'Faculty Member' : 'Enrolled Student'}</p>
                                     <div className="flex flex-col gap-3 w-full max-w-[200px] mx-auto">
                                         <button 
@@ -479,11 +534,13 @@ const AdminDashboard = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                         <div className="p-8 rounded-[2rem] bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
                                             <p className="text-xs font-bold text-blue-600 mb-2">Subject/Core Area</p>
-                                            <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.subject || selectedEntity.class}</p>
+                                            <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.subject || selectedEntity.class || 'N/A'}</p>
                                         </div>
                                         <div className="p-8 rounded-[2rem] bg-teal-50 dark:bg-teal-500/10 border border-teal-100 dark:border-teal-500/20">
                                             <p className="text-xs font-bold text-teal-600 mb-2">Performance Index</p>
-                                            <p className="text-xl font-black text-slate-900 dark:text-white">{selectedEntity.experience || `${selectedEntity.performance?.engagement_avg || 88}%`}</p>
+                                            <p className="text-xl font-black text-slate-900 dark:text-white">
+                                                {selectedEntity.experience || (selectedEntity.performance?.engagement_avg ? `${selectedEntity.performance.engagement_avg}%` : '88%')}
+                                            </p>
                                         </div>
 
                                         {/* Fee / Salary Status with Progress Bar */}
@@ -885,10 +942,12 @@ const AdminDashboard = () => {
                                     </button>
                                     <button
                                         onClick={() => {
-                                            const studentEntity = students.find(s => s.name === selectedReport.studentName);
+                                            const studentEntity = students.find(s => s.name === selectedReport.studentName || s.student_id === selectedReport.student_id);
                                             if (studentEntity) {
                                                 setSelectedEntity(studentEntity);
                                                 setActiveTab('students');
+                                            } else {
+                                                toast.error("Could not locate student profile.");
                                             }
                                             setIsInvestigateModalOpen(false);
                                         }}
@@ -1006,6 +1065,13 @@ const AdminDashboard = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+            <CameraModal 
+                isOpen={isCameraModalOpen} 
+                onClose={() => setIsCameraModalOpen(false)} 
+                onCapture={handlePhotoCapture}
+                title={`Update ${selectedEntity?.name || 'Entity'}'s Photo`}
+            />
         </div>
     );
 };

@@ -67,6 +67,21 @@ def get_reports(db: Session, student_id: str = None):
         query = query.filter(models.Report.student_id == student_id)
     return query.all()
 
+def get_report(db: Session, report_id: int):
+    return db.query(models.Report).filter(models.Report.id == report_id).first()
+
+def update_report_status(db: Session, report_id: int, status: str, log_action: str = None):
+    db_report = get_report(db, report_id)
+    if db_report:
+        db_report.status = status
+        if log_action:
+            audit = list(db_report.audit_log) if db_report.audit_log else []
+            audit.append({"date": datetime.now().isoformat(), "action": log_action})
+            db_report.audit_log = audit
+        db.commit()
+        db.refresh(db_report)
+    return db_report
+
 def create_report(db: Session, student_id: str, teacher_id: int, subject: str, content: str):
     db_report = models.Report(
         student_id=student_id,

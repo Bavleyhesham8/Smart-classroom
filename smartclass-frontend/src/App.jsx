@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import AppRouter from './router/AppRouter'
 import { useAuth } from './context/AuthContext'
 import useStore from './store/useStore'
+import { ThemeProvider } from './components/ThemeProvider'
 
 function App() {
   const { loading } = useAuth();
@@ -45,7 +46,9 @@ function App() {
         </div>
       )}
 
-      <AppRouter />
+      <ThemeProvider>
+        <AppRouter />
+      </ThemeProvider>
     </>
   )
 }

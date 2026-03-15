@@ -63,7 +63,7 @@ const ProfileDropdown = ({ user, logout }) => {
         }
     };
 
-    const captureFromCamera = useCallback(() => {
+    const captureFromCamera = useCallback(async () => {
         if (!videoRef.current || !canvasRef.current) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -72,9 +72,18 @@ const ProfileDropdown = ({ user, logout }) => {
         canvas.getContext('2d').drawImage(video, 0, 0);
         const base64 = canvas.toDataURL('image/jpeg', 0.85);
         setProfilePhoto(base64);
+        
+        // Persist to backend
+        try {
+            const axios = (await import('axios')).default;
+            await axios.patch('/api/user/photo', { photo: base64 });
+            toast.success("Profile photo updated & synced!");
+        } catch {
+            toast.error("Photo updated locally, but failed to sync to server.");
+        }
+        
         stopCamera();
         setEditPhotoOpen(false);
-        toast.success("Profile photo updated!");
     }, []);
 
     const stopCamera = () => {
@@ -87,10 +96,19 @@ const ProfileDropdown = ({ user, logout }) => {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setProfilePhoto(reader.result);
+        reader.onloadend = async () => {
+            const base64 = reader.result;
+            setProfilePhoto(base64);
+            
+            try {
+                const axios = (await import('axios')).default;
+                await axios.patch('/api/user/photo', { photo: base64 });
+                toast.success("Profile photo uploaded & synced!");
+            } catch {
+                toast.error("Photo updated locally, but failed to sync to server.");
+            }
+            
             setEditPhotoOpen(false);
-            toast.success("Profile photo updated!");
         };
         reader.readAsDataURL(file);
     };

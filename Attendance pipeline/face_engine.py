@@ -57,7 +57,18 @@ _preload_cuda()
 import numpy as np
 from dataclasses import dataclass
 from typing import List, Optional
-from insightface.app import FaceAnalysis
+
+# Robust import for insightface to handle onnxruntime environment issues
+try:
+    from insightface.app import FaceAnalysis
+    FACE_ENGINE_AVAILABLE = True
+except ImportError as e:
+    print(f"[FaceEngine] ⚠  Critical: InsightFace or ONNXRuntime failed to import: {e}")
+    FACE_ENGINE_AVAILABLE = False
+except Exception as e:
+    print(f"[FaceEngine] ⚠  Unexpected error during import: {e}")
+    FACE_ENGINE_AVAILABLE = False
+
 from config import INSIGHT_MODEL, DET_SIZE, USE_GPU
 
 
@@ -87,13 +98,25 @@ class FaceEngine:
     """
 
     def __init__(self):
+        if not FACE_ENGINE_AVAILABLE:
+            print("[FaceEngine] ⚠  AI Core is OFFLINE. Model initialization skipped.")
+            self._app = None
+            self._rec_session = None
+            return
+
         providers = (
             ["CUDAExecutionProvider", "CPUExecutionProvider"]
             if USE_GPU else
             ["CPUExecutionProvider"]
         )
-        self._app = FaceAnalysis(name=INSIGHT_MODEL, providers=providers)
-        self._app.prepare(ctx_id=0 if USE_GPU else -1, det_size=DET_SIZE)
+        try:
+            self._app = FaceAnalysis(name=INSIGHT_MODEL, providers=providers)
+            self._app.prepare(ctx_id=0 if USE_GPU else -1, det_size=DET_SIZE)
+        except Exception as e:
+            print(f"[FaceEngine] ⚠  Failed to prepare FaceAnalysis: {e}")
+            self._app = None
+            self._rec_session = None
+            return
 
         # Confirm GPU
         gpu_active = False
@@ -122,6 +145,8 @@ class FaceEngine:
         so we can call it directly with a batched numpy array.
         InsightFace names it 'recognition' internally.
         """
+        if not self._app:
+            return
         for name, model in self._app.models.items():
             if hasattr(model, "session") and "recognition" in name.lower():
                 sess = model.session
@@ -142,7 +167,14 @@ class FaceEngine:
         GPU batching for multi-face frames.
         Returns FaceResults sorted largest-face-first.
         """
-        raw = self._app.get(frame)
+        if not self._app:
+            return []
+        try:
+            raw = self._app.get(frame)
+        except Exception as e:
+            print(f"[FaceEngine] Error during detection: {e}")
+            return []
+            
         if not raw:
             return []
 
@@ -211,6 +243,8 @@ class FaceEngine:
 
     def _embed_single(self, img: np.ndarray) -> np.ndarray:
         """Sequential fallback for one face crop."""
+        if self._rec_session is None:
+            return np.zeros(512, dtype=np.float32)
         inp = self._preprocess_face(img)[np.newaxis]  # (1,3,112,112)
         out = self._rec_session.run(
             [self._rec_output_name],

@@ -174,6 +174,12 @@ const TeacherDashboard = () => {
             if (data.type === 'stranger_alert') {
                 setActiveStrangerAlerts(prev => [...prev, data.payload]);
                 toast.error("SECURITY ALERT: Unknown person detected!", { duration: 6000 });
+            } else if (data.type === 'attendance_update') {
+                setStudents(prev => prev.map(s => 
+                    (s.student_id || s.id) === data.payload.student_id 
+                    ? { ...s, attendance_status: data.payload.status, last_seen: data.payload.time }
+                    : s
+                ));
             }
         };
 
@@ -220,16 +226,22 @@ const TeacherDashboard = () => {
     );
 
     const handleOverride = async (studentId, status) => {
+        // Optimistic update
+        const previousStudents = [...students];
+        setStudents(prev => prev.map(s => 
+            (s.student_id || s.id) === studentId ? { ...s, attendance_status: status } : s
+        ));
+        
         try {
             const res = await axios.post('/api/attendance/override', { studentId, date: selectedDate, status });
             if (res.data.success) {
-                const updatedStudents = students.map(s =>
-                    (s.student_id || s.id) === studentId ? res.data.student : s
-                );
-                setStudents(updatedStudents);
+                toast.success(`Marked ${status} successfully`);
+                // WebSocket will sync other clients, and we've already done optimistic update locally.
             }
         } catch (err) {
             console.error("Override failed", err);
+            toast.error("Failed to update attendance");
+            setStudents(previousStudents); // Rollback
         }
     };
 

@@ -89,48 +89,65 @@ const useStore = create(
             reports: [],
             setReports: (r) => set({ reports: r }),
             addReport: (r) => set((s) => ({ reports: [r, ...s.reports] })),
-            approveReport: (id) =>
+            approveReport: async (id) => {
+                try {
+                    const axios = (await import('axios')).default;
+                    await axios.patch(`/api/reports/${id}/status`, { 
+                        status: 'Approved', 
+                        log_action: 'Approved by Admin & pushed to Parent' 
+                    });
+                    // Local state will be updated via WebSocket broadcast, but for immediate feedback:
+                    set((s) => ({
+                        reports: s.reports.map((r) =>
+                            r.id === id ? { ...r, status: 'Approved' } : r
+                        ),
+                    }));
+                } catch (e) {
+                    console.error("Failed to approve report", e);
+                }
+            },
+            refuseReport: async (id, reason) => {
+                try {
+                    const axios = (await import('axios')).default;
+                    await axios.patch(`/api/reports/${id}/status`, { 
+                        status: 'Refused', 
+                        log_action: `Refused by Admin: ${reason}` 
+                    });
+                    set((s) => ({
+                        reports: s.reports.map((r) =>
+                            r.id === id ? { ...r, status: 'Refused' } : r
+                        ),
+                    }));
+                } catch (e) {
+                    console.error("Failed to refuse report", e);
+                }
+            },
+            updateReportStatus: async (id, status, logAction) => {
+                try {
+                    const axios = (await import('axios')).default;
+                    await axios.patch(`/api/reports/${id}/status`, { status, log_action: logAction });
+                    set((s) => ({
+                        reports: s.reports.map((r) =>
+                            r.id === id ? { ...r, status, auditLog: [...(r.auditLog || []), { date: new Date().toISOString(), action: logAction }] } : r
+                        ),
+                    }));
+                } catch (e) {
+                    console.error("Failed to update report status", e);
+                }
+            },
+
+            updateReportFromWs: (update) => {
                 set((s) => ({
                     reports: s.reports.map((r) =>
-                        r.id === id
-                            ? {
-                                ...r,
-                                status: 'Approved',
-                                auditLog: [
-                                    ...(r.auditLog || []),
-                                    { date: new Date().toISOString(), action: 'Approved by Admin & pushed to Parent' },
-                                ],
-                            }
-                            : r
+                        r.id === update.id ? { ...r, ...update } : r
                     ),
-                })),
-            refuseReport: (id, reason) =>
+                }));
+            },
+            addNewReportFromWs: (report) => {
                 set((s) => ({
-                    reports: s.reports.map((r) =>
-                        r.id === id
-                            ? {
-                                ...r,
-                                status: 'Refused',
-                                auditLog: [
-                                    ...(r.auditLog || []),
-                                    { date: new Date().toISOString(), action: `Refused by Admin: ${reason}` },
-                                ],
-                            }
-                            : r
-                    ),
-                })),
-            updateReportStatus: (id, status, logAction) =>
-                set((s) => ({
-                    reports: s.reports.map((r) =>
-                        r.id === id
-                            ? {
-                                ...r,
-                                status,
-                                auditLog: [...(r.auditLog || []), { date: new Date().toISOString(), action: logAction }],
-                            }
-                            : r
-                    ),
-                })),
+                    reports: [report, ...s.reports]
+                }));
+            },
 
             // ── CV Integration placeholder state ──
             cvPipelineStatus: { running: false, fps: 0, studentsInFrame: 0, strangersActive: 0 },
