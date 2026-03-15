@@ -11,7 +11,9 @@
 ## 📺 Project Demo
 *Experience the 2026 Education Ecosystem in action.*
 
-<video src="docs/assets/cv demo.mp4" width="100%" controls></video>
+<div align="center">
+  <video src="docs/assets/cv_demo.mp4" width="100%" controls></video>
+</div>
 
 ---
 
@@ -23,7 +25,7 @@
 
 | Sign In / Up | AI Biometric Scanner |
 |:---:|:---:|
-| ![Login Page](docs/assets/sign in-up page.png) | ![AI Scanner](docs/assets/ai scanner.png) |
+| ![Login Page](docs/assets/signin_signup_page.png) | ![AI Scanner](docs/assets/ai_scanner.png) |
 
 ### 📊 Professional Dashboards
 - **Teacher Command Center**: Real-time attendance monitoring, AI-driven participation analytics, and direct parent reporting.
@@ -32,7 +34,7 @@
 
 | Admin Dashboard | Teacher Dashboard |
 |:---:|:---:|
-| ![Admin Hub](docs/assets/admin page.png) | ![Teacher Hub](docs/assets/teacher page.png) |
+| ![Admin Hub](docs/assets/admin_page.png) | ![Teacher Hub](docs/assets/teacher_page.png) |
 
 ### 🎨 2026 Design System
 - **Glassmorphism**: Ultra-modern translucent UI elements with backdrop-blur and satin finishes.
