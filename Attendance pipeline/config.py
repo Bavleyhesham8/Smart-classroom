@@ -23,7 +23,7 @@ STRANGERS_EMB   = os.path.join(STR_DIR, "embeddings.npz")
 # ═══════════════════════════════════════════
 #  CAMERA
 # ═══════════════════════════════════════════
-CAM_INDEX  = 0
+CAM_INDEX  = r"D:\Smart classroom\grok-video-13f1aec6-e293-4d6f-afa7-75dc3f360918.mp4"
 FRAME_W    = 1280
 FRAME_H    = 720
 TARGET_FPS = 30

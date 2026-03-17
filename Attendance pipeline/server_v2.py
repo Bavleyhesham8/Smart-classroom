@@ -24,11 +24,22 @@ from config import BASE_DIR, STR_IMG
 import crud_v2 as crud
 import schemas_v2 as schemas
 import models_v2 as models
+from face_engine import FaceEngine
+from database import StudentDatabase
 
 # Initialize DB
 init_db_v2()
 
+# Global AI Engine
+face_engine = FaceEngine()
+legacy_db = StudentDatabase()
+
 app = FastAPI(title="SmartClass V2 API")
+
+# Pipeline state
+_pipeline_thread = None
+_pipeline_stop_event = threading.Lock() # Using a lock to prevent concurrent start/stop
+_pipeline_running = False
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,9 +66,28 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 video_queue = queue.Queue(maxsize=10)
+_last_stream_access = datetime.now()
+
+def update_stream_frame(jpg_bytes: bytes):
+    """Called by main_pipeline.py every frame to update stream."""
+    global _last_stream_access
+    # Check if we should stop the pipeline due to inactivity
+    # (e.g. if no one has requested the stream for 60 seconds)
+    if (datetime.now() - _last_stream_access).total_seconds() > 60:
+        if _pipeline_active:
+            print("[Auto-Stop] No stream viewers for 60s. Stopping pipeline...")
+            pipeline_stop()
+        return
+
+    if video_queue.full():
+        try: video_queue.get_nowait()
+        except: pass
+    video_queue.put(jpg_bytes)
 
 def gen_frames():
+    global _last_stream_access
     while True:
+        _last_stream_access = datetime.now()
         try:
             # Short timeout to keep loop responsive
             frame = video_queue.get(timeout=0.5)
@@ -95,10 +125,11 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "child_id": user.child_id,
+            "childId": user.child_id,
             "theme_preference": user.theme_preference,
             "status": user.status
-        }
+        },
+        "needsProfileCompletion": (user.role == "parent" and not user.child_id)
     }
 
 @app.patch("/api/users/theme")
@@ -122,7 +153,7 @@ def link_child(req: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     user.child_id = child_id
     db.commit()
-    return {"status": "success", "child_id": child_id}
+    return {"status": "success", "childId": child_id}
 
 # ── Students ──────────────────────────────────────────────────────────────────
 
@@ -338,6 +369,52 @@ def reject_change(change_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Change not found or not pending")
     return {"status": "success", "change_id": change.id}
 
+# ── Pipeline Control ──────────────────────────────────────────────────────────
+
+_pipeline_active = False
+_stop_event = threading.Event()
+
+@app.post("/api/pipeline/start")
+async def pipeline_start():
+    global _pipeline_thread, _stop_event, _pipeline_active
+    
+    # Check if anything is already using the camera/port
+    # We rely on main_pipeline's own error handling for camera index
+    if _pipeline_active:
+        raise HTTPException(400, "Pipeline is already running")
+
+    _stop_event.clear()
+    
+    def run_task():
+        global _pipeline_active, _last_stream_access
+        _last_stream_access = datetime.now() # Reset timer on start
+        
+        try:
+            _pipeline_active = True
+            # CRITICAL: We monkeypatch the function in the main_pipeline module
+            # so the loop uses our queue instead of the old server.
+            import main_pipeline
+            main_pipeline.update_stream_frame = update_stream_frame
+            print("[Pipeline] Starting core with monkeypatched stream...")
+            main_pipeline.run_pipeline(stop_event=_stop_event, headless=True)
+        finally:
+            _pipeline_active = False
+            print("[Pipeline] Core stopped and camera released.")
+
+    _pipeline_thread = threading.Thread(target=run_task, daemon=True)
+    _pipeline_thread.start()
+    return {"status": "started"}
+
+@app.post("/api/pipeline/stop")
+def pipeline_stop():
+    global _stop_event
+    _stop_event.set()
+    return {"status": "stopped"}
+
+@app.get("/api/pipeline/status")
+def pipeline_status():
+    return {"running": _pipeline_active}
+
 # ── Classes & Schedules (Auto-Enrollment & Approvals) ─────────────────────────
 
 @app.post("/api/classes/assign")
@@ -422,7 +499,7 @@ _enroll_lock   = threading.Lock()
 def enroll_start(req: dict):
     global _enroll_status
     with _enroll_lock:
-        if _enroll_status["stage"] not in ("idle", "done", "cancelled"):
+        if _enroll_status["stage"] not in ("idle", "done", "cancelled", "error"):
             raise HTTPException(400, "Enrollment already in progress")
         _enroll_status = {"stage": "starting", "progress": 0, "name": req.get("name")}
 
@@ -448,41 +525,99 @@ def enroll_status_get():
 
 @app.post("/api/enroll/web")
 def enroll_web(req: dict, db: Session = Depends(get_db)):
-    # Ported from server.py with enhancements for V2
     name = req.get("name")
+    email = req.get("email") # Get user email to link
     images = req.get("images", []) # List[b64]
     
-    if not images:
-        raise HTTPException(400, "No images provided")
+    if not images or len(images) < 1:
+        raise HTTPException(400, "At least one image required for enrollment")
         
-    # Save the first image as profile picture
-    profile_img_b64 = images[0]
+    # Process images with real FaceEngine to get embeddings
+    embeddings = []
+    processed_images = []
     
-    # Generate embeddings (Simplified for now - in real app call FaceEngine)
-    # Placeholder embedding
-    emb_blob = base64.b64decode("AQID" * 256) # Mock blob
+    for img_b64 in images:
+        try:
+            # Decode b64
+            header, encoded = img_b64.split(",", 1) if "," in img_b64 else (None, img_b64)
+            img_data = base64.b64decode(encoded)
+            nparr = np.frombuffer(img_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if frame is None: continue
+            
+            # Use real FaceEngine
+            face = face_engine.largest_face(frame)
+            if face:
+                embeddings.append(face.embedding)
+                processed_images.append(img_b64) # Keep the one that worked
+        except Exception as e:
+            print(f"Error processing enrollment image: {e}")
+            continue
+
+    if not embeddings:
+        raise HTTPException(400, "Could not detect a clear face. Please try again.")
+
+    emb_stack = np.stack(embeddings[:3] if len(embeddings) >= 3 else [embeddings[0]]*3)
     
-    sid = "S" + datetime.now().strftime("%H%M%S") # Simple ID gen
+    # 0. Check Duplicate
+    is_dup, dup_sid, dup_name, _ = legacy_db.check_duplicate(emb_stack)
+    if is_dup:
+        raise HTTPException(400, f"Face already enrolled: {dup_name} ({dup_sid})")
+
+    # We take up to 3 for legacy sync (front, right, left)
+    # If we have less, we duplicate the first one for the angles
+    final_embs = []
+    for i in range(3):
+        if i < len(embeddings):
+            final_embs.append(embeddings[i])
+        else:
+            final_embs.append(embeddings[0])
     
+    emb_stack = np.stack(final_embs) # (3, 512)
+    
+    # 1. Save to New SQLAlchemy DB (SQLITE/POSTGRES)
+    sid = "S" + datetime.now().strftime("%H%M%S")
     db_student = models.Student(
         student_id=sid,
         name=name,
-        profile_image_b64=profile_img_b64,
+        profile_image_b64=processed_images[0],
         enrolled_date=datetime.now()
     )
     db.add(db_student)
     db.commit()
     
-    # Add embeddings
-    for i, angle in enumerate(["front", "left", "right"]):
+    for i, angle in enumerate(["front", "right", "left"]):
         db_emb = models.FaceEmbedding(
             student_id=sid,
-            embedding=emb_blob,
+            embedding=final_embs[i].tobytes(),
             angle=angle
         )
         db.add(db_emb)
-    
     db.commit()
+    
+    # 3. LINK TO USER
+    if email:
+        user = db.query(models.User).filter(models.User.email == email).first()
+        if user:
+            user.child_id = sid
+            db.commit()
+            print(f"[Enroll] Linked student {sid} to user {email}")
+    
+    # 3. LINK TO USER
+    if email:
+        target_user = db.query(models.User).filter(models.User.email == email).first()
+        if target_user:
+            target_user.child_id = sid
+            db.commit()
+            print(f"[Sync] Linked student {sid} to parent {email}")
+
+    # 2. SYNC TO LEGACY DATABASE
+    try:
+        legacy_db.enroll(name, emb_stack)
+        print(f"[Sync] Saved {name} to legacy database.")
+    except Exception as e:
+        print(f"[Sync] Warning: Failed to sync to legacy DB: {e}")
     
     return {"status": "enrolled", "student_id": sid, "name": name}
 

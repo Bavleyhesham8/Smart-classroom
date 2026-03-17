@@ -108,7 +108,12 @@ export const AuthProvider = ({ children }) => {
                 store.initTheme(userData.theme_preference);
             }
             
-            return { success: true, role: userData.role };
+            return { 
+                success: true, 
+                role: userData.role, 
+                childId: userData.childId,
+                profileCompleted: userData.childId ? true : false
+            };
         } catch (error) {
             console.error('Login error:', error);
             return { success: false, message: error.response?.data?.error || 'Login failed' };

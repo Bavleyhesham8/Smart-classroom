@@ -175,11 +175,19 @@ const TeacherDashboard = () => {
                 setActiveStrangerAlerts(prev => [...prev, data.payload]);
                 toast.error("SECURITY ALERT: Unknown person detected!", { duration: 6000 });
             } else if (data.type === 'attendance_update') {
-                setStudents(prev => prev.map(s => 
-                    (s.student_id || s.id) === data.payload.student_id 
-                    ? { ...s, attendance_status: data.payload.status, last_seen: data.payload.time }
-                    : s
-                ));
+                setStudents(prev => prev.map(s => {
+                    if ((s.student_id || s.id) === data.payload.student_id) {
+                        const newAttendance = [...(s.attendance || [])];
+                        const dateIdx = newAttendance.findIndex(a => a.date === data.payload.date);
+                        if (dateIdx > -1) {
+                            newAttendance[dateIdx] = { ...newAttendance[dateIdx], status: data.payload.status, time: data.payload.time };
+                        } else {
+                            newAttendance.push({ date: data.payload.date, status: data.payload.status, time: data.payload.time });
+                        }
+                        return { ...s, attendance: newAttendance };
+                    }
+                    return s;
+                }));
             }
         };
 
@@ -228,9 +236,19 @@ const TeacherDashboard = () => {
     const handleOverride = async (studentId, status) => {
         // Optimistic update
         const previousStudents = [...students];
-        setStudents(prev => prev.map(s => 
-            (s.student_id || s.id) === studentId ? { ...s, attendance_status: status } : s
-        ));
+        setStudents(prev => prev.map(s => {
+            if ((s.student_id || s.id) === studentId) {
+                const newAttendance = [...(s.attendance || [])];
+                const dateIdx = newAttendance.findIndex(a => a.date === selectedDate);
+                if (dateIdx > -1) {
+                    newAttendance[dateIdx] = { ...newAttendance[dateIdx], status: status, time: format(new Date(), 'hh:mm a') };
+                } else {
+                    newAttendance.push({ date: selectedDate, status: status, time: format(new Date(), 'hh:mm a') });
+                }
+                return { ...s, attendance: newAttendance };
+            }
+            return s;
+        }));
         
         try {
             const res = await axios.post('/api/attendance/override', { studentId, date: selectedDate, status });

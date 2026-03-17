@@ -411,22 +411,32 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         pose_est = HeadPoseEstimator(FRAME_W, FRAME_H)
 
         # Try multiple camera indices if CAM_INDEX fails
-        indices_to_try = [CAM_INDEX, 0, 1, 2] if CAM_INDEX != 0 else [0, 1, 2]
         cap = None
         
-        for idx in indices_to_try:
-            print(f"[Enrollment] Attempting to open camera index {idx}...")
-            test_cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(idx)
-            if test_cap.isOpened():
-                cap = test_cap
-                print(f"[Enrollment] Camera opened successfully on index {idx}")
-                break
-            test_cap.release()
+        # Determine if CAM_INDEX is a file or a device
+        is_file = isinstance(CAM_INDEX, str) and not str(CAM_INDEX).isdigit()
+        
+        if is_file:
+            print(f"[Enrollment] Attempting to open video file: {CAM_INDEX}")
+            cap = cv2.VideoCapture(CAM_INDEX)
+        else:
+            indices_to_try = [CAM_INDEX, 0, 1, 2] if CAM_INDEX != 0 else [0, 1, 2]
+            for idx in indices_to_try:
+                # Convert to int if string digit
+                device_idx = int(idx) if isinstance(idx, str) and idx.isdigit() else idx
+                print(f"[Enrollment] Attempting to open camera index {device_idx}...")
+                test_cap = cv2.VideoCapture(device_idx, cv2.CAP_DSHOW) if os.name == 'nt' else cv2.VideoCapture(device_idx)
+                if test_cap.isOpened():
+                    cap = test_cap
+                    print(f"[Enrollment] Camera opened successfully on index {device_idx}")
+                    break
+                test_cap.release()
 
         if not cap or not cap.isOpened():
-            print("[Enrollment] CRITICAL: Could not open any camera index.")
+            detail = f"Video file access failed: {CAM_INDEX}" if is_file else "Camera access failed. Ensure no other app is using it."
+            print(f"[Enrollment] CRITICAL: {detail}")
             with lock:
-                status_dict.update({"stage": "error", "detail": "Camera access failed. Ensure no other app is using it."})
+                status_dict.update({"stage": "error", "detail": detail})
             
             # Optional: yield one "Camera Fail" frame so user sees the error on stream
             if update_frame_cb:
@@ -548,7 +558,11 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
             from database_v2 import SessionLocal
             import models_v2 as models
             
-            sid = db.enroll(name, emb_arr) # Internal CV-engine enrollment
+            # Use same timestamp-based ID as server_v2.py for consistency
+            sid = "S" + datetime.now().strftime("%H%M%S")
+            
+            # Internal CV-engine enrollment still needs ID
+            legacy_id = db.enroll(name, emb_arr) 
             
             with SessionLocal() as session:
                 new_student = models.Student(
@@ -587,6 +601,9 @@ def run_enrollment_headless(name, status_dict, lock, update_frame_cb=None):
         traceback.print_exc()
         with lock:
             status_dict.update({"stage": "error", "detail": str(e)})
+    finally:
+        if cap and cap.isOpened():
+            cap.release()
 
 
 

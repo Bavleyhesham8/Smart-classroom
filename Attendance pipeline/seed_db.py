@@ -7,10 +7,16 @@ def seed():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     
+    # Also wipe legacy files to prevent ID conflicts
+    from config import STUDENTS_CSV, EMBEDDINGS_FILE
+    for f in [STUDENTS_CSV, EMBEDDINGS_FILE]:
+        if os.path.exists(f):
+            os.remove(f)
+    
     db = SessionLocal()
     
     # 1. Teachers & Users
-    t1_user = User(email="teacher@example.com", password_hash="pass", role="teacher", name="Mr. Teacher", status="approved")
+    t1_user = User(email="teacher@example.com", password_hash="pass123", role="teacher", name="Mr. Teacher", status="approved")
     db.add(t1_user)
     db.commit()
     
@@ -26,15 +32,15 @@ def seed():
     db.commit()
     
     # 3. Parents
-    p1 = User(email="parent@example.com", password_hash="pass", role="parent", name="Mrs. Parent", child_id="S001", status="approved")
+    p1 = User(email="parent@example.com", password_hash="pass123", role="parent", name="Mrs. Parent", child_id="S001", status="approved")
     db.add(p1)
     
     # 4. Pending Users (for Admin Approval test)
-    p_pending = User(email="new_parent@example.com", password_hash="pass", role="parent", name="New Parent", status="pending")
+    p_pending = User(email="new_parent@example.com", password_hash="pass123", role="parent", name="New Parent", status="pending")
     db.add(p_pending)
     
     # 5. Admin
-    admin = User(email="admin@example.com", password_hash="pass", role="admin", name="Admin User", status="approved")
+    admin = User(email="admin@example.com", password_hash="pass123", role="admin", name="Admin User", status="approved")
     db.add(admin)
     db.commit()
     

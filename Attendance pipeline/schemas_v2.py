@@ -11,7 +11,7 @@ class UserBase(BaseModel):
     name: str
     email: str
     role: str
-    child_id: Optional[str] = None
+    childId: Optional[str] = None
     theme_preference: str = "light"
     status: str = "approved"
 

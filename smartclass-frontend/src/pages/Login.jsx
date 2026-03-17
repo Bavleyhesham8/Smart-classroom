@@ -11,7 +11,7 @@ const Login = () => {
 
     // Sign In State
     const [email, setEmail] = useState('teacher@example.com');
-    const [password, setPassword] = useState('pass');
+    const [password, setPassword] = useState('pass123');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
 
     // Sign Up State
@@ -42,7 +42,9 @@ const Login = () => {
             if (result.success) {
                 toast.success('Login successful!', { id: toastId });
                 // Check if profile needs completion (new users)
-                if (result.needsProfileCompletion || (!profileCompleted && result.role === 'parent')) {
+                const needsCompletion = result.needsProfileCompletion || (result.role === 'parent' && !result.childId && !result.profileCompleted);
+                
+                if (needsCompletion) {
                     navigate('/complete-profile');
                 } else {
                     navigate(`/${result.role}/dashboard`);
@@ -198,9 +200,9 @@ const Login = () => {
                                 {/* Quick login helper */}
                                 <div className="flex gap-2 flex-wrap">
                                     {[
-                                        { label: 'Admin', email: 'admin@example.com', pass: 'pass' },
-                                        { label: 'Teacher', email: 'teacher@example.com', pass: 'pass' },
-                                        { label: 'Parent', email: 'parent@example.com', pass: 'pass' },
+                                        { label: 'Admin', email: 'admin@example.com', pass: 'pass123' },
+                                        { label: 'Teacher', email: 'teacher@example.com', pass: 'pass123' },
+                                        { label: 'Parent', email: 'parent@example.com', pass: 'pass123' },
                                     ].map(q => (
                                         <button
                                             key={q.label}

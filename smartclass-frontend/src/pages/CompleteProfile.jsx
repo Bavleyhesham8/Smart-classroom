@@ -35,7 +35,7 @@ const CompleteProfile = () => {
             const res = await fetch('/api/enroll/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: user.name })
+                body: JSON.stringify({ name: user.name, email: user.email })
             });
 
             if (!res.ok) throw new Error("Failed to start AI enrollment");

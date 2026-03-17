@@ -244,7 +244,7 @@ const ParentDashboard = () => {
                                     <BookOpen size={14} /> Grade 10
                                 </span>
                                 <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full text-xs font-bold border border-white/10 text-blue-400 uppercase tracking-widest">
-                                    ID: {student.id}
+                                    ID: {student.student_id || student.id}
                                 </span>
                             </div>
                         </div>

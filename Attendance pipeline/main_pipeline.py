@@ -44,6 +44,9 @@ from config       import (
     STRANGER_ALERT_FRAMES, ALERT_FLASH_FRAMES,
 )
 
+# Global callback for web stream (set by server_v2.py)
+update_stream_frame = None
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  ENHANCEMENT 1 — SMART MOTION-BASED FACE DETECTION SKIP
@@ -748,7 +751,41 @@ def run_pipeline(stop_event: threading.Event = None,
         print("  [S] save CSV   [Q] quit\n")
 
     # ── Camera ────────────────────────────────────────────────────────────────
-    cap = cv2.VideoCapture(CAM_INDEX)
+    def open_camera(index):
+        # If index is a string and looks like a file, open without CAP_DSHOW
+        if isinstance(index, str) and not index.isdigit():
+            print(f"[*] Opening video file: {index}")
+            return cv2.VideoCapture(index)
+            
+        # Hardware index handling
+        idx = int(index) if isinstance(index, str) and index.isdigit() else index
+        # Try DSHOW first for faster init on Windows
+        cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW)
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(idx)
+        return cap
+
+    print(f"[*] Initializing input (target: {CAM_INDEX})...")
+    cap = open_camera(CAM_INDEX)
+    
+    # Fallback to other indices ONLY if primary target was a hardware index
+    is_hardware = not (isinstance(CAM_INDEX, str) and not str(CAM_INDEX).isdigit())
+    
+    if not cap.isOpened() and is_hardware:
+        for alt_idx in [0, 1, 2]:
+            if alt_idx == CAM_INDEX: continue
+            print(f"[*] Trying alternative camera index {alt_idx}...")
+            cap = open_camera(alt_idx)
+            if cap.isOpened():
+                print(f"[+] Found working camera at index {alt_idx}")
+                break
+    
+    if not cap.isOpened():
+        print("  ❌ FATAL: Could not open any camera index (0, 1, 2).")
+        sqldb.push_event("pipeline_error", {"detail": "Camera access denied or device disconnected"})
+        sqldb.update_pipeline_status(running=False)
+        return
+
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  FRAME_W)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_H)
     cap.set(cv2.CAP_PROP_BUFFERSIZE,   1)
@@ -859,15 +896,12 @@ def run_pipeline(stop_event: threading.Event = None,
         # ── 9. Output — window or MJPEG stream ───────────────────────────────
         if headless:
             # Encode JPEG and push to web stream buffer
-            _, jpg = cv2.imencode(
-                ".jpg", combined,
-                [cv2.IMWRITE_JPEG_QUALITY, 75]
-            )
-            try:
-                import server as web_server
-                web_server.update_stream_frame(jpg.tobytes())
-            except Exception:
-                pass   # server not loaded when running standalone
+            if update_stream_frame:
+                _, jpg = cv2.imencode(
+                    ".jpg", combined,
+                    [cv2.IMWRITE_JPEG_QUALITY, 75]
+                )
+                update_stream_frame(jpg.tobytes())
         else:
             cv2.imshow("Smart Classroom — Attendance", combined)
             key = cv2.waitKey(1) & 0xFF
